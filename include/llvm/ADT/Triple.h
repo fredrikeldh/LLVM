@@ -67,7 +67,7 @@ public:
     ptx64,   // PTX: ptx (64-bit)
     le32,    // le32: generic little-endian 32-bit CPU (PNaCl / Emscripten)
     amdil,   // amdil: amd IL
-
+    mapip,   // mapip: mapip IL
     InvalidArch
   };
   enum VendorType {

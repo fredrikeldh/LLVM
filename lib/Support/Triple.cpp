@@ -42,6 +42,7 @@ const char *Triple::getArchTypeName(ArchType Kind) {
   case ptx64:   return "ptx64";
   case le32:    return "le32";
   case amdil:   return "amdil";
+  case mapip:   return "mapip";
   }
 
   return "<invalid>";
@@ -78,6 +79,7 @@ const char *Triple::getArchTypePrefix(ArchType Kind) {
   case ptx64:   return "ptx";
   case le32:    return "le32";
   case amdil:   return "amdil";
+  case mapip:   return "mapip";
   }
 }
 
@@ -230,7 +232,8 @@ Triple::ArchType Triple::getArchTypeForDarwinArchName(StringRef Str) {
     return Triple::ptx64;
   if (Str == "amdil")
       return Triple::amdil;
-
+  if (Str == "mapip")
+      return Triple::mapip;
   return Triple::UnknownArch;
 }
 
@@ -269,6 +272,8 @@ const char *Triple::getArchNameForAssembler() {
     return "le32";
   if (Str == "amdil")
       return "amdil";
+  if (Str == "mapip")
+      return "mapip";
   return NULL;
 }
 
@@ -329,6 +334,8 @@ Triple::ArchType Triple::ParseArch(StringRef ArchName) {
   else if (ArchName == "le32")
     return le32;
   else if (ArchName == "amdil")
+      return amdil;
+  else if (ArchName == "mapip")
       return amdil;
   else
     return UnknownArch;
