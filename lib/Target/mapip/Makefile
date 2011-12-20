@@ -12,14 +12,7 @@ LIBRARYNAME = LLVMMapipCodeGen
 TARGET = Mapip
 
 # Make sure that tblgen is run, first thing.
-BUILT_SOURCES = MapipGenAsmWriter.inc \
-	MapipGenDAGISel.inc \
-	MapipGenInstrInfo.inc \
-##	MapipGenInstrNames.inc \
-	MapipGenRegisterInfo.inc \
-##	MapipGenRegisterInfo.h.inc \
-	MapipGenRegisterNames.inc \
-	MapipGenSubtarget.inc
+BUILT_SOURCES =
 
 DIRS = TargetInfo
 
