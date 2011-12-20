@@ -187,6 +187,8 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     return le32;
   if (Name == "amdil")
       return amdil;
+  if (Name == "mapip")
+      return mapip;
 
   return UnknownArch;
 }
@@ -336,7 +338,7 @@ Triple::ArchType Triple::ParseArch(StringRef ArchName) {
   else if (ArchName == "amdil")
       return amdil;
   else if (ArchName == "mapip")
-      return amdil;
+      return mapip;
   else
     return UnknownArch;
 }

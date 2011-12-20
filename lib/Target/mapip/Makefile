@@ -23,4 +23,6 @@ BUILT_SOURCES = MapipGenAsmWriter.inc \
 
 DIRS = TargetInfo
 
+CPPFLAGS = -Werror
+
 include $(LEVEL)/Makefile.common
