@@ -1,4 +1,4 @@
-//===- MapipRegisterInfo.h - Mapip Register Information Impl --------*- C++ -*-===//
+//===- MapipRegisterInfo.h - Mapip Register Information Impl ----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,57 +7,50 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the Mapip implementation of the MRegisterInfo class.
+// This file contains the Mapip implementation of the TargetRegisterInfo class.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef Mapip_REGISTER_INFO_H
-#define Mapip_REGISTER_INFO_H
+#ifndef MAPIPREGISTERINFO_H
+#define MAPIPREGISTERINFO_H
 
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/ADT/BitVector.h"
+#include "llvm/Target/TargetRegisterInfo.h"
 
-//#include "MapipGenRegisterInfo.h.inc"
+#define GET_REGINFO_HEADER
+#include "MapipGenRegisterInfo.inc"
 
 namespace llvm {
-class MapipTargetMachine;
-class MachineFunction;
+
+class TargetInstrInfo;
+class Type;
 
 struct MapipRegisterInfo : public MapipGenRegisterInfo {
-  MapipRegisterInfo(MapipTargetMachine &TM,
-                  const TargetInstrInfo &TII) {}
+  const TargetInstrInfo &TII;
 
-  virtual const unsigned
-    *getCalleeSavedRegs(const MachineFunction *MF = 0) const {
-    static const unsigned CalleeSavedRegs[] = { 0 };
-    return CalleeSavedRegs; // save nothing
-  }
+  MapipRegisterInfo(const TargetInstrInfo &tii);
 
-  virtual BitVector getReservedRegs(const MachineFunction &MF) const {
-    BitVector Reserved(getNumRegs());
-    return Reserved; // reserve no regs
-  }
+  /// Code Generation virtual methods...
+  const unsigned *getCalleeSavedRegs(const MachineFunction *MF = 0) const;
 
-  virtual void eliminateFrameIndex(MachineBasicBlock::iterator MI,
-                                   int SPAdj,
-                                   RegScavenger *RS = NULL) const {
-    llvm_unreachable("Mapip does not support general function call");
-  }
+  BitVector getReservedRegs(const MachineFunction &MF) const;
 
-  virtual unsigned getFrameRegister(const MachineFunction &MF) const {
-    llvm_unreachable("Mapip does not have a frame register");
-    return 0;
-  }
+  void eliminateCallFramePseudoInstr(MachineFunction &MF,
+                                     MachineBasicBlock &MBB,
+                                     MachineBasicBlock::iterator I) const;
 
-  virtual unsigned getRARegister() const {
-    llvm_unreachable("Mapip does not have a return address register");
-    return 0;
-  }
+  void eliminateFrameIndex(MachineBasicBlock::iterator II,
+                           int SPAdj, RegScavenger *RS = NULL) const;
 
-  virtual int getDwarfRegNum(unsigned RegNum, bool isEH) const {
-    return MapipGenRegisterInfo::getDwarfRegNumFull(RegNum, 0);
-  }
-}; // struct MapipRegisterInfo
-} // namespace llvm
+  // Debug information queries.
+  unsigned getFrameRegister(const MachineFunction &MF) const;
 
-#endif // Mapip_REGISTER_INFO_H
+  // Exception handling queries.
+  unsigned getEHExceptionRegister() const;
+  unsigned getEHHandlerRegister() const;
+
+  static std::string getPrettyName(unsigned reg);
+};
+
+} // end namespace llvm
+
+#endif

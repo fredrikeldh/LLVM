@@ -1,4 +1,4 @@
-//=====-- MapipMCAsmInfo.h - Mapip asm properties -----------------*- C++ -*--====//
+//=====-- MapipMCAsmInfo.h - Mapip asm properties -------------*- C++ -*--====//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -11,18 +11,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef Mapip_MCASM_INFO_H
-#define Mapip_MCASM_INFO_H
+#ifndef MAPIPTARGETASMINFO_H
+#define MAPIPTARGETASMINFO_H
 
+#include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCAsmInfo.h"
 
 namespace llvm {
   class Target;
-  class StringRef;
 
   struct MapipMCAsmInfo : public MCAsmInfo {
-    explicit MapipMCAsmInfo(const Target &T, const StringRef &TT);
+    explicit MapipMCAsmInfo(const Target &T, StringRef TT);
   };
+
 } // namespace llvm
 
-#endif // Mapip_MCASM_INFO_H
+#endif

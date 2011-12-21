@@ -1,4 +1,4 @@
-//===-- PTXTargetMachine.cpp - Define TargetMachine for PTX ---------------===//
+//===-- MapipTargetMachine.cpp - Define TargetMachine for Mapip -----------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,63 +7,45 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Top-level implementation for the PTX target.
 //
 //===----------------------------------------------------------------------===//
 
 #include "Mapip.h"
-#include "MapipMCAsmInfo.h"
 #include "MapipTargetMachine.h"
 #include "llvm/PassManager.h"
-#include "llvm/Target/TargetRegistry.h"
-#include "llvm/Support/raw_ostream.h"
-
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/TargetRegistry.h"
 using namespace llvm;
 
-namespace llvm {
-  MCStreamer *createMapipAsmStreamer(MCContext &Ctx, formatted_raw_ostream &OS,
-                                   bool isVerboseAsm, bool useLoc,
-                                   MCInstPrinter *InstPrint,
-                                   MCCodeEmitter *CE,
-                                   TargetAsmBackend *TAB,
-                                   bool ShowInst);
-}
-
 extern "C" void LLVMInitializeMapipTarget() {
+  // Register the target.
   RegisterTargetMachine<MapipTargetMachine> X(TheMapipTarget);
-  RegisterAsmInfo<MapipMCAsmInfo> Y(TheMapipTarget);
-  TargetRegistry::RegisterAsmStreamer(TheMapipTarget, createMapipAsmStreamer);
 }
 
-namespace {
-  const char* DataLayout32 =
-    "e-p:32:32";
-}
-
-// DataLayout and FrameLowering are filled with dummy data
-MapipTargetMachine::MapipTargetMachine(const Target &T,
-                                   const std::string &TT,
-                                   const std::string &FS)
-  : LLVMTargetMachine(T, TT),
-    // FIXME: This feels like a dirty hack, but Subtarget does not appear to be
-    //        initialized at this point, and we need to finish initialization of
-    //        DataLayout.
-    DataLayout(DataLayout32),
-    Subtarget(TT, FS),
+MapipTargetMachine::MapipTargetMachine(const Target &T, StringRef TT,
+                                       StringRef CPU, StringRef FS,
+                                       Reloc::Model RM, CodeModel::Model CM)
+  : LLVMTargetMachine(T, TT, CPU, FS, RM, CM),
+    DataLayout("e-f128:128:128-n64"),
     FrameLowering(Subtarget),
-    InstrInfo(*this),
-    TLInfo(*this) {
+    Subtarget(TT, CPU, FS),
+    TLInfo(*this),
+    TSInfo(*this) {
 }
+
+//===----------------------------------------------------------------------===//
+// Pass Pipeline Configuration
+//===----------------------------------------------------------------------===//
 
 bool MapipTargetMachine::addInstSelector(PassManagerBase &PM,
-                                       CodeGenOpt::Level OptLevel) {
-  PM.add(createMapipISelDag(*this, OptLevel));
+                                         CodeGenOpt::Level OptLevel) {
+  PM.add(createMapipISelDag(*this));
   return false;
 }
-
-bool MapipTargetMachine::addPostRegAlloc(PassManagerBase &PM,
-                                       CodeGenOpt::Level OptLevel) {
-  // PTXMFInfoExtract must after register allocation!
-  PM.add(createMapipMFInfoExtract(*this, OptLevel));
+bool MapipTargetMachine::addPreEmitPass(PassManagerBase &PM,
+                                        CodeGenOpt::Level OptLevel) {
+  // Must run branch selection immediately preceding the asm printer
+  PM.add(createMapipBranchSelectionPass());
+  PM.add(createMapipLLRPPass(*this));
   return false;
 }

@@ -1,4 +1,4 @@
-//===-- MapipMCAsmInfo.cpp - Mapip asm properties -----------------------------===//
+//===-- MapipMCAsmInfo.cpp - Mapip asm properties ---------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -12,19 +12,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "MapipMCAsmInfo.h"
-
 using namespace llvm;
 
-MapipMCAsmInfo::MapipMCAsmInfo(const Target &T, const StringRef &TT) {
-  CommentString = "//";
-
-  PrivateGlobalPrefix = "$L__";
-
-  AllowPeriodsInName = false;
-
+MapipMCAsmInfo::MapipMCAsmInfo(const Target &T, StringRef TT) {
+  AlignmentIsInBytes = false;
+  PrivateGlobalPrefix = "$";
+  GPRel32Directive = ".gprel32";
+  WeakRefDirective = "\t.weak\t";
   HasSetDirective = false;
-
-  HasDotTypeDotSizeDirective = false;
-
-  HasSingleParameterDotFile = false;
 }

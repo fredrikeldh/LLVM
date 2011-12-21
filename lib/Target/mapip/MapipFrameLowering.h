@@ -1,4 +1,4 @@
-//===--- PTXFrameLowering.h - Define frame lowering for PTX --*- C++ -*----===//
+//==-- MapipFrameLowering.h - Define frame lowering for Mapip --*- C++ -*---==//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -22,13 +22,12 @@ namespace llvm {
   class MapipSubtarget;
 
 class MapipFrameLowering : public TargetFrameLowering {
-protected:
   const MapipSubtarget &STI;
-
+  // FIXME: This should end in MachineFunctionInfo, not here!
+  mutable int curgpdist;
 public:
   explicit MapipFrameLowering(const MapipSubtarget &sti)
-    : TargetFrameLowering(TargetFrameLowering::StackGrowsDown, 2, -2),
-      STI(sti) {
+    : TargetFrameLowering(StackGrowsDown, 16, 0), STI(sti), curgpdist(0) {
   }
 
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into
@@ -36,7 +35,7 @@ public:
   void emitPrologue(MachineFunction &MF) const;
   void emitEpilogue(MachineFunction &MF, MachineBasicBlock &MBB) const;
 
-  bool hasFP(const MachineFunction &MF) const { return false; }
+  bool hasFP(const MachineFunction &MF) const;
 };
 
 } // End llvm namespace

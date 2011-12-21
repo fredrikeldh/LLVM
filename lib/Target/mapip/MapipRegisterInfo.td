@@ -1,4 +1,4 @@
-//===- MapipRegisterInfo.td - Mapip Register defs ----------------*- tblgen -*-===//
+//===- MapipRegisterInfo.td - The Mapip Register File ------*- tablegen -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -6,103 +6,128 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-
-//===----------------------------------------------------------------------===//
-//  Declarations that describe the Mapip register file
+//
+// This file describes the Mapip register set.
+//
 //===----------------------------------------------------------------------===//
 
 class MapipReg<string n> : Register<n> {
+  field bits<5> Num;
   let Namespace = "Mapip";
 }
 
-///===- 32-bit Integer Registers ------------------------------------------===//
+// We identify all our registers with a 5-bit ID, for consistency's sake.
 
-def R0  : MapipReg<"zero">;
-def R1  : MapipReg<"sp">;
-def R2  : MapipReg<"rt">;
-def R3  : MapipReg<"fp">;
-def R4  : MapipReg<"d0">;
-def R5  : MapipReg<"d1">;
-def R6  : MapipReg<"d2">;
-def R7  : MapipReg<"d3">;
-def R8  : MapipReg<"d4">;
-def R9  : MapipReg<"d5">;
-def R10 : MapipReg<"d6">;
-def R11 : MapipReg<"d7">;
-def R12 : MapipReg<"p0">;
-def R13 : MapipReg<"p1">;
-def R14 : MapipReg<"p2">;
-def R15 : MapipReg<"p3">;
-def R16 : MapipReg<"r0">;
-def R17 : MapipReg<"r1">;
-def R18 : MapipReg<"r2">;
-def R19 : MapipReg<"r3">;
-def R20 : MapipReg<"r4">;
-def R21 : MapipReg<"r5">;
-def R22 : MapipReg<"r6">;
-def R23 : MapipReg<"r7">;
-def R24 : MapipReg<"r8">;
-def R25 : MapipReg<"r9">;
-def R26 : MapipReg<"r10">;
-def R27 : MapipReg<"r11">;
-def R28 : MapipReg<"r12">;
-def R29 : MapipReg<"r13">;
-def R30 : MapipReg<"r14">;
-def R31 : MapipReg<"r15">;
+// GPR - One of the 32 32-bit general-purpose registers
+class GPR<bits<5> num, string n> : MapipReg<n> {
+  let Num = num;
+}
 
-/* todo
-///===- 64-bit Floating-Point Registers -----------------------------------===//
+// FPR - One of the 32 64-bit floating-point registers
+class FPR<bits<5> num, string n> : MapipReg<n> {
+  let Num = num;
+}
 
-def FD0  : MapipReg<"fd0">;
-def FD1  : MapipReg<"fd1">;
-def FD2  : MapipReg<"fd2">;
-def FD3  : MapipReg<"fd3">;
-def FD4  : MapipReg<"fd4">;
-def FD5  : MapipReg<"fd5">;
-def FD6  : MapipReg<"fd6">;
-def FD7  : MapipReg<"fd7">;
-def FD8  : MapipReg<"fd8">;
-def FD9  : MapipReg<"fd9">;
-def FD10 : MapipReg<"fd10">;
-def FD11 : MapipReg<"fd11">;
-def FD12 : MapipReg<"fd12">;
-def FD13 : MapipReg<"fd13">;
-def FD14 : MapipReg<"fd14">;
-def FD15 : MapipReg<"fd15">;
-def FD16 : MapipReg<"fd16">;
-def FD17 : MapipReg<"fd17">;
-def FD18 : MapipReg<"fd18">;
-def FD19 : MapipReg<"fd19">;
-def FD20 : MapipReg<"fd20">;
-def FD21 : MapipReg<"fd21">;
-def FD22 : MapipReg<"fd22">;
-def FD23 : MapipReg<"fd23">;
-def FD24 : MapipReg<"fd24">;
-def FD25 : MapipReg<"fd25">;
-def FD26 : MapipReg<"fd26">;
-def FD27 : MapipReg<"fd27">;
-def FD28 : MapipReg<"fd28">;
-def FD29 : MapipReg<"fd29">;
-def FD30 : MapipReg<"fd30">;
-def FD31 : MapipReg<"fd31">;
-*/
+//#define FP    $15
+//#define RA    $26
+//#define PV    $27
+//#define GP    $29
+//#define SP    $30
 
-//===----------------------------------------------------------------------===//
-//  Register classes
-//===----------------------------------------------------------------------===//
+// General-purpose registers
+def R0  : GPR< 0,  "$0">, DwarfRegNum<[0]>;
+def R1  : GPR< 1,  "$1">, DwarfRegNum<[1]>;
+def R2  : GPR< 2,  "$2">, DwarfRegNum<[2]>;
+def R3  : GPR< 3,  "$3">, DwarfRegNum<[3]>;
+def R4  : GPR< 4,  "$4">, DwarfRegNum<[4]>;
+def R5  : GPR< 5,  "$5">, DwarfRegNum<[5]>;
+def R6  : GPR< 6,  "$6">, DwarfRegNum<[6]>;
+def R7  : GPR< 7,  "$7">, DwarfRegNum<[7]>;
+def R8  : GPR< 8,  "$8">, DwarfRegNum<[8]>;
+def R9  : GPR< 9,  "$9">, DwarfRegNum<[9]>;
+def R10 : GPR<10, "$10">, DwarfRegNum<[10]>;
+def R11 : GPR<11, "$11">, DwarfRegNum<[11]>;
+def R12 : GPR<12, "$12">, DwarfRegNum<[12]>;
+def R13 : GPR<13, "$13">, DwarfRegNum<[13]>;
+def R14 : GPR<14, "$14">, DwarfRegNum<[14]>;
+def R15 : GPR<15, "$15">, DwarfRegNum<[15]>;
+def R16 : GPR<16, "$16">, DwarfRegNum<[16]>;
+def R17 : GPR<17, "$17">, DwarfRegNum<[17]>;
+def R18 : GPR<18, "$18">, DwarfRegNum<[18]>;
+def R19 : GPR<19, "$19">, DwarfRegNum<[19]>;
+def R20 : GPR<20, "$20">, DwarfRegNum<[20]>;
+def R21 : GPR<21, "$21">, DwarfRegNum<[21]>;
+def R22 : GPR<22, "$22">, DwarfRegNum<[22]>;
+def R23 : GPR<23, "$23">, DwarfRegNum<[23]>;
+def R24 : GPR<24, "$24">, DwarfRegNum<[24]>;
+def R25 : GPR<25, "$25">, DwarfRegNum<[25]>;
+def R26 : GPR<26, "$26">, DwarfRegNum<[26]>;
+def R27 : GPR<27, "$27">, DwarfRegNum<[27]>;
+def R28 : GPR<28, "$28">, DwarfRegNum<[28]>;
+def R29 : GPR<29, "$29">, DwarfRegNum<[29]>;
+def R30 : GPR<30, "$30">, DwarfRegNum<[30]>;
+def R31 : GPR<31, "$31">, DwarfRegNum<[31]>;
 
-// 32-bit signed integer
-def GPR : RegisterClass<"Mapip", [i32], 32,
-	(add R0, R1, R2, R3, R4, R5, R6, R7,
-	R8, R9, R10, R11, R12, R13, R14, R15,
-	R16, R17, R18, R19, R20, R21, R22, R23,
-	R24, R25, R26, R27, R28, R29, R30, R31)>;
+// Floating-point registers
+def F0  : FPR< 0,  "$f0">, DwarfRegNum<[33]>;
+def F1  : FPR< 1,  "$f1">, DwarfRegNum<[34]>;
+def F2  : FPR< 2,  "$f2">, DwarfRegNum<[35]>;
+def F3  : FPR< 3,  "$f3">, DwarfRegNum<[36]>;
+def F4  : FPR< 4,  "$f4">, DwarfRegNum<[37]>;
+def F5  : FPR< 5,  "$f5">, DwarfRegNum<[38]>;
+def F6  : FPR< 6,  "$f6">, DwarfRegNum<[39]>;
+def F7  : FPR< 7,  "$f7">, DwarfRegNum<[40]>;
+def F8  : FPR< 8,  "$f8">, DwarfRegNum<[41]>;
+def F9  : FPR< 9,  "$f9">, DwarfRegNum<[42]>;
+def F10 : FPR<10, "$f10">, DwarfRegNum<[43]>;
+def F11 : FPR<11, "$f11">, DwarfRegNum<[44]>;
+def F12 : FPR<12, "$f12">, DwarfRegNum<[45]>;
+def F13 : FPR<13, "$f13">, DwarfRegNum<[46]>;
+def F14 : FPR<14, "$f14">, DwarfRegNum<[47]>;
+def F15 : FPR<15, "$f15">, DwarfRegNum<[48]>;
+def F16 : FPR<16, "$f16">, DwarfRegNum<[49]>;
+def F17 : FPR<17, "$f17">, DwarfRegNum<[50]>;
+def F18 : FPR<18, "$f18">, DwarfRegNum<[51]>;
+def F19 : FPR<19, "$f19">, DwarfRegNum<[52]>;
+def F20 : FPR<20, "$f20">, DwarfRegNum<[53]>;
+def F21 : FPR<21, "$f21">, DwarfRegNum<[54]>;
+def F22 : FPR<22, "$f22">, DwarfRegNum<[55]>;
+def F23 : FPR<23, "$f23">, DwarfRegNum<[56]>;
+def F24 : FPR<24, "$f24">, DwarfRegNum<[57]>;
+def F25 : FPR<25, "$f25">, DwarfRegNum<[58]>;
+def F26 : FPR<26, "$f26">, DwarfRegNum<[59]>;
+def F27 : FPR<27, "$f27">, DwarfRegNum<[60]>;
+def F28 : FPR<28, "$f28">, DwarfRegNum<[61]>;
+def F29 : FPR<29, "$f29">, DwarfRegNum<[62]>;
+def F30 : FPR<30, "$f30">, DwarfRegNum<[63]>;
+def F31 : FPR<31, "$f31">, DwarfRegNum<[64]>;
 
-/* todo
-// 64-bit floating point
-def Regf64 : RegisterClass<"Mapip", [f64], 64,
-	(add FD0, FD1, FD2, FD3, FD4, FD5, FD6, FD7,
-	FD8, FD9, FD10, FD11, FD12, FD13, FD14, FD15,
-	FD16, FD17, FD18, FD19, FD20, FD21, FD22, FD23,
-	FD24, FD25, FD26, FD27, FD28, FD29, FD30, FD31)>;
-*/
+  // //#define FP    $15
+  // //#define RA    $26
+  // //#define PV    $27
+  // //#define GP    $29
+  // //#define SP    $30
+  // $28 is undefined after any and all calls
+
+/// Register classes
+def GPRC : RegisterClass<"Mapip", [i64], 64, (add
+     // Volatile
+     R0, R1, R2, R3, R4, R5, R6, R7, R8, R16, R17, R18, R19, R20, R21, R22,
+     R23, R24, R25, R28,
+     //Special meaning, but volatile
+     R27, //procedure address
+     R26, //return address
+     R29, //global offset table address
+     // Non-volatile
+     R9, R10, R11, R12, R13, R14,
+// Don't allocate 15, 30, 31
+     R15, R30, R31)>; //zero
+
+def F4RC : RegisterClass<"Mapip", [f32], 64, (add F0, F1,
+        F10, F11, F12, F13, F14, F15, F16, F17, F18, F19,
+        F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30,
+        // Saved:
+        F2, F3, F4, F5, F6, F7, F8, F9,
+        F31)>; //zero
+
+def F8RC : RegisterClass<"Mapip", [f64], 64, (add F4RC)>;

@@ -1,4 +1,4 @@
-//===- Mapip.td - Describe the Mapip Target Machine -----------*- tblgen -*-==//
+//===- Mapip.td - Describe the Mapip Target Machine --------*- tablegen -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -6,33 +6,40 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-// This is the top level entry point for the Mapip target.
+//
+//
 //===----------------------------------------------------------------------===//
 
-//===----------------------------------------------------------------------===//
-// Target-independent interfaces
-//===----------------------------------------------------------------------===//
-
+// Get the target-independent interfaces which we are implementing...
+//
 include "llvm/Target/Target.td"
 
-//===----------------------------------------------------------------------===//
-// Subtarget Features.
-//===----------------------------------------------------------------------===//
-
-//===- Architectural Features ---------------------------------------------===//
-
-// todo
-//def FeatureDouble : SubtargetFeature<"double", "SupportsDouble", "true",
-//	"Do not demote .f64 to .f32">;
+//Mapip is little endian
 
 //===----------------------------------------------------------------------===//
-// Mapip supported processors.
+// Subtarget Features
 //===----------------------------------------------------------------------===//
 
-class Proc<string Name, list<SubtargetFeature> Features>
-	: Processor<Name, NoItineraries, Features>;
+def FeatureCIX : SubtargetFeature<"cix", "HasCT", "true",
+                                  "Enable CIX extensions">;
 
-def : Proc<"generic", []>;
+//===----------------------------------------------------------------------===//
+// Register File Description
+//===----------------------------------------------------------------------===//
+
+include "MapipRegisterInfo.td"
+
+//===----------------------------------------------------------------------===//
+// Calling Convention Description
+//===----------------------------------------------------------------------===//
+
+include "MapipCallingConv.td"
+
+//===----------------------------------------------------------------------===//
+// Schedule Description
+//===----------------------------------------------------------------------===//
+
+include "MapipSchedule.td"
 
 //===----------------------------------------------------------------------===//
 // Instruction Descriptions
@@ -43,9 +50,19 @@ include "MapipInstrInfo.td"
 def MapipInstrInfo : InstrInfo;
 
 //===----------------------------------------------------------------------===//
-// Target Declaration
+// Mapip Processor Definitions
 //===----------------------------------------------------------------------===//
 
+def : Processor<"generic", Mapip21264Itineraries, []>;
+def : Processor<"ev6"    , Mapip21264Itineraries, []>;
+def : Processor<"ev67"   , Mapip21264Itineraries, [FeatureCIX]>;
+
+//===----------------------------------------------------------------------===//
+// The Mapip Target
+//===----------------------------------------------------------------------===//
+
+
 def Mapip : Target {
-	let InstructionSet = MapipInstrInfo;
+  // Pull in Instruction Info:
+  let InstructionSet = MapipInstrInfo;
 }

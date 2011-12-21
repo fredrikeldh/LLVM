@@ -1,4 +1,4 @@
-//===-- MapipAsmPrinter.cpp - Mapip LLVM assembly writer ----------------------===//
+//===-- MapipAsmPrinter.cpp - Mapip LLVM assembly writer ------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -8,393 +8,157 @@
 //===----------------------------------------------------------------------===//
 //
 // This file contains a printer that converts from our internal representation
-// of machine-dependent LLVM code to Mapip assembly language.
+// of machine-dependent LLVM code to GAS-format Mapip assembly language.
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "mapip-asm-printer"
-
+#define DEBUG_TYPE "asm-printer"
 #include "Mapip.h"
-#include "MapipMachineFunctionInfo.h"
+#include "MapipInstrInfo.h"
 #include "MapipTargetMachine.h"
-#include "llvm/DerivedTypes.h"
 #include "llvm/Module.h"
-#include "llvm/ADT/SmallString.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/ADT/Twine.h"
+#include "llvm/Type.h"
+#include "llvm/Assembly/Writer.h"
 #include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/CodeGen/MachineInstr.h"
-#include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Target/Mangler.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
-#include "llvm/Target/TargetRegistry.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/MathExtras.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
-
 using namespace llvm;
 
 namespace {
-class MapipAsmPrinter : public AsmPrinter {
-public:
-  explicit MapipAsmPrinter(TargetMachine &TM, MCStreamer &Streamer)
-    : AsmPrinter(TM, Streamer) {}
+  struct MapipAsmPrinter : public AsmPrinter {
+    /// Unique incrementer for label values for referencing Global values.
+    ///
 
-  const char *getPassName() const { return "Mapip Assembly Printer"; }
+    explicit MapipAsmPrinter(TargetMachine &tm, MCStreamer &Streamer)
+      : AsmPrinter(tm, Streamer) {}
 
-  bool doFinalization(Module &M);
-
-  virtual void EmitStartOfAsmFile(Module &M);
-
-  virtual bool runOnMachineFunction(MachineFunction &MF);
-
-  virtual void EmitFunctionBodyStart();
-  virtual void EmitFunctionBodyEnd() { OutStreamer.EmitRawText(Twine("}")); }
-
-  virtual void EmitInstruction(const MachineInstr *MI);
-
-  void printOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
-  void printMemOperand(const MachineInstr *MI, int opNum, raw_ostream &OS,
-                       const char *Modifier = 0);
-  void printParamOperand(const MachineInstr *MI, int opNum, raw_ostream &OS,
-                         const char *Modifier = 0);
-
-  // autogen'd.
-  void printInstruction(const MachineInstr *MI, raw_ostream &OS);
-  static const char *getRegisterName(unsigned RegNo);
-
-private:
-  void EmitVariableDeclaration(const GlobalVariable *gv);
-  void EmitFunctionDeclaration();
-}; // class MapipAsmPrinter
-} // namespace
-
-static const char PARAM_PREFIX[] = "__param_";
-
-static const char *getRegisterTypeName(unsigned RegNo) {
-#define TEST_REGCLS(cls, clsstr)                \
-  if (Mapip::cls ## RegisterClass->contains(RegNo)) return # clsstr;
-  TEST_REGCLS(Preds, pred);
-  TEST_REGCLS(RRegu16, u16);
-  TEST_REGCLS(RRegu32, u32);
-  TEST_REGCLS(RRegu64, u64);
-  TEST_REGCLS(RRegf32, f32);
-  TEST_REGCLS(RRegf64, f64);
-#undef TEST_REGCLS
-
-  llvm_unreachable("Not in any register class!");
-  return NULL;
-}
-
-static const char *getInstructionTypeName(const MachineInstr *MI) {
-  for (int i = 0, e = MI->getNumOperands(); i != e; ++i) {
-    const MachineOperand &MO = MI->getOperand(i);
-    if (MO.getType() == MachineOperand::MO_Register)
-      return getRegisterTypeName(MO.getReg());
-  }
-
-  llvm_unreachable("No reg operand found in instruction!");
-  return NULL;
-}
-
-static const char *getStateSpaceName(unsigned addressSpace) {
-  switch (addressSpace) {
-  default: llvm_unreachable("Unknown state space");
-  case Mapip::GLOBAL:    return "global";
-  case Mapip::CONSTANT:  return "const";
-  case Mapip::LOCAL:     return "local";
-  case Mapip::PARAMETER: return "param";
-  case Mapip::SHARED:    return "shared";
-  }
-  return NULL;
-}
-
-static const char *getTypeName(const Type* type) {
-  while (true) {
-    switch (type->getTypeID()) {
-      default: llvm_unreachable("Unknown type");
-      case Type::FloatTyID: return ".f32";
-      case Type::DoubleTyID: return ".f64";
-      case Type::IntegerTyID:
-        switch (type->getPrimitiveSizeInBits()) {
-          default: llvm_unreachable("Unknown integer bit-width");
-          case 16: return ".u16";
-          case 32: return ".u32";
-          case 64: return ".u64";
-        }
-      case Type::ArrayTyID:
-      case Type::PointerTyID:
-        type = dyn_cast<const SequentialType>(type)->getElementType();
-        break;
+    virtual const char *getPassName() const {
+      return "Mapip Assembly Printer";
     }
+    void printInstruction(const MachineInstr *MI, raw_ostream &O);
+    void EmitInstruction(const MachineInstr *MI) {
+      SmallString<128> Str;
+      raw_svector_ostream OS(Str);
+      printInstruction(MI, OS);
+      OutStreamer.EmitRawText(OS.str());
+    }
+    static const char *getRegisterName(unsigned RegNo);
+
+    void printOp(const MachineOperand &MO, raw_ostream &O);
+    void printOperand(const MachineInstr *MI, int opNum, raw_ostream &O);
+    virtual void EmitFunctionBodyStart();
+    virtual void EmitFunctionBodyEnd();
+    void EmitStartOfAsmFile(Module &M);
+
+    bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                         unsigned AsmVariant, const char *ExtraCode,
+                         raw_ostream &O);
+    bool PrintAsmMemoryOperand(const MachineInstr *MI,
+                               unsigned OpNo, unsigned AsmVariant,
+                               const char *ExtraCode, raw_ostream &O);
+  };
+} // end of anonymous namespace
+
+#include "MapipGenAsmWriter.inc"
+
+void MapipAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
+                                   raw_ostream &O) {
+  const MachineOperand &MO = MI->getOperand(opNum);
+  if (MO.isReg()) {
+    assert(TargetRegisterInfo::isPhysicalRegister(MO.getReg()) &&
+           "Not physreg??");
+    O << getRegisterName(MO.getReg());
+  } else if (MO.isImm()) {
+    O << MO.getImm();
+    assert(MO.getImm() < (1 << 30));
+  } else {
+    printOp(MO, O);
   }
-  return NULL;
 }
 
-bool MapipAsmPrinter::doFinalization(Module &M) {
-  // XXX Temproarily remove global variables so that doFinalization() will not
-  // emit them again (global variables are emitted at beginning).
 
-  Module::GlobalListType &global_list = M.getGlobalList();
-  int i, n = global_list.size();
-  GlobalVariable **gv_array = new GlobalVariable* [n];
+void MapipAsmPrinter::printOp(const MachineOperand &MO, raw_ostream &O) {
+  switch (MO.getType()) {
+  case MachineOperand::MO_Register:
+    O << getRegisterName(MO.getReg());
+    return;
 
-  // first, back-up GlobalVariable in gv_array
-  i = 0;
-  for (Module::global_iterator I = global_list.begin(), E = global_list.end();
-       I != E; ++I)
-    gv_array[i++] = &*I;
+  case MachineOperand::MO_Immediate:
+    assert(0 && "printOp() does not handle immediate values");
+    return;
 
-  // second, empty global_list
-  while (!global_list.empty())
-    global_list.remove(global_list.begin());
+  case MachineOperand::MO_MachineBasicBlock:
+    O << *MO.getMBB()->getSymbol();
+    return;
 
-  // call doFinalization
-  bool ret = AsmPrinter::doFinalization(M);
+  case MachineOperand::MO_ConstantPoolIndex:
+    O << MAI->getPrivateGlobalPrefix() << "CPI" << getFunctionNumber() << "_"
+      << MO.getIndex();
+    return;
 
-  // now we restore global variables
-  for (i = 0; i < n; i ++)
-    global_list.insert(global_list.end(), gv_array[i]);
+  case MachineOperand::MO_ExternalSymbol:
+    O << MO.getSymbolName();
+    return;
 
-  delete[] gv_array;
-  return ret;
+  case MachineOperand::MO_GlobalAddress:
+    O << *Mang->getSymbol(MO.getGlobal());
+    return;
+
+  case MachineOperand::MO_JumpTableIndex:
+    O << MAI->getPrivateGlobalPrefix() << "JTI" << getFunctionNumber()
+      << '_' << MO.getIndex();
+    return;
+
+  default:
+    O << "<unknown operand type: " << MO.getType() << ">";
+    return;
+  }
 }
 
-void MapipAsmPrinter::EmitStartOfAsmFile(Module &M)
-{
-  const MapipSubtarget& ST = TM.getSubtarget<MapipSubtarget>();
-
-  OutStreamer.EmitRawText(Twine("\t.version " + ST.getMapipVersionString()));
-  OutStreamer.EmitRawText(Twine("\t.target " + ST.getTargetString() +
-                                (ST.supportsDouble() ? ""
-                                                     : ", map_f64_to_f32")));
-  OutStreamer.AddBlankLine();
-
-  // declare global variables
-  for (Module::const_global_iterator i = M.global_begin(), e = M.global_end();
-       i != e; ++i)
-    EmitVariableDeclaration(i);
+/// EmitFunctionBodyStart - Targets can override this to emit stuff before
+/// the first basic block in the function.
+void MapipAsmPrinter::EmitFunctionBodyStart() {
+  OutStreamer.EmitRawText("\t.ent " + Twine(CurrentFnSym->getName()));
 }
 
-bool MapipAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
-  SetupMachineFunction(MF);
-  EmitFunctionDeclaration();
-  EmitFunctionBody();
+/// EmitFunctionBodyEnd - Targets can override this to emit stuff after
+/// the last basic block in the function.
+void MapipAsmPrinter::EmitFunctionBodyEnd() {
+  OutStreamer.EmitRawText("\t.end " + Twine(CurrentFnSym->getName()));
+}
+
+void MapipAsmPrinter::EmitStartOfAsmFile(Module &M) {
+  OutStreamer.EmitRawText(StringRef("\t.arch ev6"));
+  OutStreamer.EmitRawText(StringRef("\t.set noat"));
+}
+
+/// PrintAsmOperand - Print out an operand for an inline asm expression.
+///
+bool MapipAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                                      unsigned AsmVariant,
+                                      const char *ExtraCode, raw_ostream &O) {
+  printOperand(MI, OpNo, O);
   return false;
 }
 
-void MapipAsmPrinter::EmitFunctionBodyStart() {
-  OutStreamer.EmitRawText(Twine("{"));
-
-  const MapipMachineFunctionInfo *MFI = MF->getInfo<MapipMachineFunctionInfo>();
-
-  // Print local variable definition
-  for (MapipMachineFunctionInfo::reg_iterator
-       i = MFI->localVarRegBegin(), e = MFI->localVarRegEnd(); i != e; ++ i) {
-    unsigned reg = *i;
-
-    std::string def = "\t.reg .";
-    def += getRegisterTypeName(reg);
-    def += ' ';
-    def += getRegisterName(reg);
-    def += ';';
-    OutStreamer.EmitRawText(Twine(def));
-  }
+bool MapipAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
+                                            unsigned OpNo, unsigned AsmVariant,
+                                            const char *ExtraCode,
+                                            raw_ostream &O) {
+  if (ExtraCode && ExtraCode[0])
+    return true; // Unknown modifier.
+  O << "0(";
+  printOperand(MI, OpNo, O);
+  O << ")";
+  return false;
 }
-
-void MapipAsmPrinter::EmitInstruction(const MachineInstr *MI) {
-  std::string str;
-  str.reserve(64);
-
-  // Write instruction to str
-  raw_string_ostream OS(str);
-  printInstruction(MI, OS);
-  OS << ';';
-  OS.flush();
-
-  // Replace "%type" if found
-  size_t pos;
-  if ((pos = str.find("%type")) != std::string::npos)
-    str.replace(pos, /*strlen("%type")==*/5, getInstructionTypeName(MI));
-
-  StringRef strref = StringRef(str);
-  OutStreamer.EmitRawText(strref);
-}
-
-void MapipAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
-                                 raw_ostream &OS) {
-  const MachineOperand &MO = MI->getOperand(opNum);
-
-  switch (MO.getType()) {
-    default:
-      llvm_unreachable("<unknown operand type>");
-      break;
-    case MachineOperand::MO_GlobalAddress:
-      OS << *Mang->getSymbol(MO.getGlobal());
-      break;
-    case MachineOperand::MO_Immediate:
-      OS << (int) MO.getImm();
-      break;
-    case MachineOperand::MO_Register:
-      OS << getRegisterName(MO.getReg());
-      break;
-    case MachineOperand::MO_FPImmediate:
-      APInt constFP = MO.getFPImm()->getValueAPF().bitcastToAPInt();
-      bool  isFloat = MO.getFPImm()->getType()->getTypeID() == Type::FloatTyID;
-      // Emit 0F for 32-bit floats and 0D for 64-bit doubles.
-      if (isFloat) {
-        OS << "0F";
-      }
-      else {
-        OS << "0D";
-      }
-      // Emit the encoded floating-point value.
-      if (constFP.getZExtValue() > 0) {
-        OS << constFP.toString(16, false);
-      }
-      else {
-        OS << "00000000";
-        // If We have a double-precision zero, pad to 8-bytes.
-        if (!isFloat) {
-          OS << "00000000";
-        }
-      }
-      break;
-  }
-}
-
-void MapipAsmPrinter::printMemOperand(const MachineInstr *MI, int opNum,
-                                    raw_ostream &OS, const char *Modifier) {
-  printOperand(MI, opNum, OS);
-
-  if (MI->getOperand(opNum+1).isImm() && MI->getOperand(opNum+1).getImm() == 0)
-    return; // don't print "+0"
-
-  OS << "+";
-  printOperand(MI, opNum+1, OS);
-}
-
-void MapipAsmPrinter::printParamOperand(const MachineInstr *MI, int opNum,
-                                      raw_ostream &OS, const char *Modifier) {
-  OS << PARAM_PREFIX << (int) MI->getOperand(opNum).getImm() + 1;
-}
-
-void MapipAsmPrinter::EmitVariableDeclaration(const GlobalVariable *gv) {
-  // Check to see if this is a special global used by LLVM, if so, emit it.
-  if (EmitSpecialLLVMGlobal(gv))
-    return;
-
-  MCSymbol *gvsym = Mang->getSymbol(gv);
-
-  assert(gvsym->isUndefined() && "Cannot define a symbol twice!");
-
-  std::string decl;
-
-  // check if it is defined in some other translation unit
-  if (gv->isDeclaration())
-    decl += ".extern ";
-
-  // state space: e.g., .global
-  decl += ".";
-  decl += getStateSpaceName(gv->getType()->getAddressSpace());
-  decl += " ";
-
-  // alignment (optional)
-  unsigned alignment = gv->getAlignment();
-  if (alignment != 0) {
-    decl += ".align ";
-    decl += utostr(Log2_32(gv->getAlignment()));
-    decl += " ";
-  }
-
-  decl += getTypeName(gv->getType());
-  decl += " ";
-
-  decl += gvsym->getName();
-
-  if (ArrayType::classof(gv->getType()) || PointerType::classof(gv->getType()))
-    decl += "[]";
-
-  decl += ";";
-
-  OutStreamer.EmitRawText(Twine(decl));
-
-  OutStreamer.AddBlankLine();
-}
-
-void MapipAsmPrinter::EmitFunctionDeclaration() {
-  // The function label could have already been emitted if two symbols end up
-  // conflicting due to asm renaming.  Detect this and emit an error.
-  if (!CurrentFnSym->isUndefined()) {
-    report_fatal_error("'" + Twine(CurrentFnSym->getName()) +
-                       "' label emitted multiple times to assembly file");
-    return;
-  }
-
-  const MapipMachineFunctionInfo *MFI = MF->getInfo<MapipMachineFunctionInfo>();
-  const bool isKernel = MFI->isKernel();
-  unsigned reg;
-
-  std::string decl = isKernel ? ".entry" : ".func";
-
-  // Print return register
-  reg = MFI->retReg();
-  if (!isKernel && reg != Mapip::NoRegister) {
-    decl += " (.reg ."; // FIXME: could it return in .param space?
-    decl += getRegisterTypeName(reg);
-    decl += " ";
-    decl += getRegisterName(reg);
-    decl += ")";
-  }
-
-  // Print function name
-  decl += " ";
-  decl += CurrentFnSym->getName().str();
-
-  // Print parameter list
-  if (!MFI->argRegEmpty()) {
-    decl += " (";
-    if (isKernel) {
-      unsigned cnt = 0;
-      //for (int i = 0, e = MFI->getNumArg(); i != e; ++i) {
-      for(MapipMachineFunctionInfo::reg_reverse_iterator
-          i = MFI->argRegReverseBegin(), e = MFI->argRegReverseEnd(), b = i;
-          i != e; ++i) {
-        reg = *i;
-        assert(reg != Mapip::NoRegister && "Not a valid register!");
-        if (i != b)
-          decl += ", ";
-        decl += ".param .";
-        decl += getRegisterTypeName(reg);
-        decl += " ";
-        decl += PARAM_PREFIX;
-        decl += utostr(++cnt);
-      }
-    } else {
-      for (MapipMachineFunctionInfo::reg_reverse_iterator
-           i = MFI->argRegReverseBegin(), e = MFI->argRegReverseEnd(), b = i;
-           i != e; ++i) {
-        reg = *i;
-        assert(reg != Mapip::NoRegister && "Not a valid register!");
-        if (i != b)
-          decl += ", ";
-        decl += ".reg .";
-        decl += getRegisterTypeName(reg);
-        decl += " ";
-        decl += getRegisterName(reg);
-      }
-    }
-    decl += ")";
-  }
-
-  OutStreamer.EmitRawText(Twine(decl));
-}
-
-#include "MapipGenAsmWriter.inc"
 
 // Force static initialization.
 extern "C" void LLVMInitializeMapipAsmPrinter() {

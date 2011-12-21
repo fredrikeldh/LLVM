@@ -1,4 +1,4 @@
-##===- lib/Target/Mapip/Makefile ---------------------------*- Makefile -*-===##
+##===- lib/Target/Mapip/Makefile -------------------------*- Makefile -*-===##
 #
 #                     The LLVM Compiler Infrastructure
 #
@@ -12,16 +12,11 @@ LIBRARYNAME = LLVMMapipCodeGen
 TARGET = Mapip
 
 # Make sure that tblgen is run, first thing.
-BUILT_SOURCES = MapipGenAsmWriter.inc \
-	MapipGenDAGISel.inc \
-	MapipGenInstrInfo.inc \
-##	MapipGenInstrNames.inc \
-	MapipGenRegisterInfo.inc \
-##	MapipGenRegisterInfo.h.inc \
-	MapipGenRegisterNames.inc \
-	MapipGenSubtarget.inc
+BUILT_SOURCES = MapipGenRegisterInfo.inc MapipGenInstrInfo.inc \
+                MapipGenAsmWriter.inc MapipGenDAGISel.inc \
+                MapipGenCallingConv.inc MapipGenSubtargetInfo.inc
 
-DIRS = TargetInfo
+DIRS = TargetInfo MCTargetDesc
 
 CPPFLAGS = -Werror
 

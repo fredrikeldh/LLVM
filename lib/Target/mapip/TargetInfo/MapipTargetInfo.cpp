@@ -1,4 +1,4 @@
-//===-- PTXTargetInfo.cpp - PTX Target Implementation ---------------------===//
+//===-- MapipTargetInfo.cpp - Mapip Target Implementation -----------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -10,12 +10,11 @@
 #include "Mapip.h"
 #include "llvm/Module.h"
 #include "llvm/Support/TargetRegistry.h"
-
 using namespace llvm;
 
-Target llvm::TheMapipTarget;
+llvm::Target llvm::TheMapipTarget;
 
 extern "C" void LLVMInitializeMapipTargetInfo() {
-  // see llvm/ADT/Triple.h
-  RegisterTarget<Triple::mapip> X(TheMapipTarget, "mapip", "Mapip");
+  RegisterTarget<Triple::mapip, /*HasJIT=*/true>
+    X(TheMapipTarget, "mapip", "Mapip [experimental]");
 }

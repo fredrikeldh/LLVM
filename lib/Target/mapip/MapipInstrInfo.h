@@ -1,4 +1,4 @@
-//===- PTXInstrInfo.h - PTX Instruction Information -------------*- C++ -*-===//
+//===- MapipInstrInfo.h - Mapip Instruction Information ---------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,69 +7,79 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the PTX implementation of the TargetInstrInfo class.
+// This file contains the Mapip implementation of the TargetInstrInfo class.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MAPIP_INSTR_INFO_H
-#define MAPIP_INSTR_INFO_H
+#ifndef MAPIPINSTRUCTIONINFO_H
+#define MAPIPINSTRUCTIONINFO_H
 
-#include "MapipRegisterInfo.h"
-#include "llvm/CodeGen/SelectionDAG.h"
-#include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/Target/TargetInstrInfo.h"
+#include "MapipRegisterInfo.h"
+
+#define GET_INSTRINFO_HEADER
+#include "MapipGenInstrInfo.inc"
 
 namespace llvm {
-class MapipTargetMachine;
 
-class MapipInstrInfo : public TargetInstrInfoImpl {
-  private:
-    const MapipRegisterInfo RI;
-    MapipTargetMachine &TM;
+class MapipInstrInfo : public MapipGenInstrInfo {
+  const MapipRegisterInfo RI;
+public:
+  MapipInstrInfo();
 
-  public:
-    explicit MapipInstrInfo(MapipTargetMachine &_TM);
+  /// getRegisterInfo - TargetInstrInfo is a superset of MRegister info.  As
+  /// such, whenever a client has an instance of instruction info, it should
+  /// always be able to get register info as well (through this method).
+  ///
+  virtual const MapipRegisterInfo &getRegisterInfo() const { return RI; }
 
-    virtual const MapipRegisterInfo &getRegisterInfo() const { return RI; }
+  virtual unsigned isLoadFromStackSlot(const MachineInstr *MI,
+                                       int &FrameIndex) const;
+  virtual unsigned isStoreToStackSlot(const MachineInstr *MI,
+                                      int &FrameIndex) const;
 
-    virtual void copyPhysReg(MachineBasicBlock &MBB,
-                             MachineBasicBlock::iterator I, DebugLoc DL,
-                             unsigned DstReg, unsigned SrcReg,
-                             bool KillSrc) const;
+  virtual unsigned InsertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
+                                MachineBasicBlock *FBB,
+                                const SmallVectorImpl<MachineOperand> &Cond,
+                                DebugLoc DL) const;
+  virtual void copyPhysReg(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator MI, DebugLoc DL,
+                           unsigned DestReg, unsigned SrcReg,
+                           bool KillSrc) const;
+  virtual void storeRegToStackSlot(MachineBasicBlock &MBB,
+                                   MachineBasicBlock::iterator MBBI,
+                                   unsigned SrcReg, bool isKill, int FrameIndex,
+                                   const TargetRegisterClass *RC,
+                                   const TargetRegisterInfo *TRI) const;
 
-    virtual bool copyRegToReg(MachineBasicBlock &MBB,
-                              MachineBasicBlock::iterator I,
-                              unsigned DstReg, unsigned SrcReg,
-                              const TargetRegisterClass *DstRC,
-                              const TargetRegisterClass *SrcRC,
-                              DebugLoc DL) const;
+  virtual void loadRegFromStackSlot(MachineBasicBlock &MBB,
+                                    MachineBasicBlock::iterator MBBI,
+                                    unsigned DestReg, int FrameIndex,
+                                    const TargetRegisterClass *RC,
+                                    const TargetRegisterInfo *TRI) const;
 
-    virtual bool isMoveInstr(const MachineInstr& MI,
-                             unsigned &SrcReg, unsigned &DstReg,
-                             unsigned &SrcSubIdx, unsigned &DstSubIdx) const;
+  bool AnalyzeBranch(MachineBasicBlock &MBB,MachineBasicBlock *&TBB,
+                     MachineBasicBlock *&FBB,
+                     SmallVectorImpl<MachineOperand> &Cond,
+                     bool AllowModify) const;
+  unsigned RemoveBranch(MachineBasicBlock &MBB) const;
+  void insertNoop(MachineBasicBlock &MBB,
+                  MachineBasicBlock::iterator MI) const;
+  bool ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const;
 
-    // static helper routines
+  /// getGlobalBaseReg - Return a virtual register initialized with the
+  /// the global base register value. Output instructions required to
+  /// initialize the register in the function entry block, if necessary.
+  ///
+  unsigned getGlobalBaseReg(MachineFunction *MF) const;
 
-    static MachineSDNode *GetPTXMachineNode(SelectionDAG *DAG, unsigned Opcode,
-                                            DebugLoc dl, EVT VT,
-                                            SDValue Op1) {
-      SDValue pred_reg = DAG->getRegister(0, MVT::i1);
-      SDValue pred_imm = DAG->getTargetConstant(0, MVT::i32);
-      SDValue ops[] = { Op1, pred_reg, pred_imm };
-      return DAG->getMachineNode(Opcode, dl, VT, ops, array_lengthof(ops));
-    }
+  /// getGlobalRetAddr - Return a virtual register initialized with the
+  /// the global return address register value. Output instructions required to
+  /// initialize the register in the function entry block, if necessary.
+  ///
+  unsigned getGlobalRetAddr(MachineFunction *MF) const;
+};
 
-    static MachineSDNode *GetPTXMachineNode(SelectionDAG *DAG, unsigned Opcode,
-                                            DebugLoc dl, EVT VT,
-                                            SDValue Op1,
-                                            SDValue Op2) {
-      SDValue pred_reg = DAG->getRegister(0, MVT::i1);
-      SDValue pred_imm = DAG->getTargetConstant(0, MVT::i32);
-      SDValue ops[] = { Op1, Op2, pred_reg, pred_imm };
-      return DAG->getMachineNode(Opcode, dl, VT, ops, array_lengthof(ops));
-    }
+}
 
-  }; // class PTXInstrInfo
-} // namespace llvm
-
-#endif // PTX_INSTR_INFO_H
+#endif

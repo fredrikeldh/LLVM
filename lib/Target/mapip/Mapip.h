@@ -1,4 +1,4 @@
-//===-- PTX.h - Top-level interface for PTX representation ------*- C++ -*-===//
+//===-- Mapip.h - Top-level interface for Mapip representation --*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -8,42 +8,36 @@
 //===----------------------------------------------------------------------===//
 //
 // This file contains the entry points for global functions defined in the LLVM
-// PTX back-end.
+// Mapip back-end.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MAPIP_H
-#define MAPIP_H
+#ifndef TARGET_MAPIP_H
+#define TARGET_MAPIP_H
 
+#include "MCTargetDesc/MapipMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
+  namespace Mapip {
+    // These describe LDAx
+
+    static const int IMM_LOW  = -32768;
+    static const int IMM_HIGH = 32767;
+    static const int IMM_MULT = 65536;
+  }
+
   class MapipTargetMachine;
   class FunctionPass;
+  class formatted_raw_ostream;
 
-  namespace Mapip {
-    enum StateSpace {
-      GLOBAL = 0, // default to global state space
-      CONSTANT = 1,
-      LOCAL = 2,
-      PARAMETER = 3,
-      SHARED = 4
-    };
-  } // namespace PTX
+  FunctionPass *createMapipISelDag(MapipTargetMachine &TM);
+  FunctionPass *createMapipPatternInstructionSelector(TargetMachine &TM);
+  FunctionPass *createMapipJITCodeEmitterPass(MapipTargetMachine &TM,
+                                              JITCodeEmitter &JCE);
+  FunctionPass *createMapipLLRPPass(MapipTargetMachine &tm);
+  FunctionPass *createMapipBranchSelectionPass();
 
-  FunctionPass *createMapipISelDag(MapipTargetMachine &TM,
-                                 CodeGenOpt::Level OptLevel);
+} // end namespace llvm;
 
-  FunctionPass *createMapipMFInfoExtract(MapipTargetMachine &TM,
-                                       CodeGenOpt::Level OptLevel);
-
-  extern Target TheMapipTarget;
-} // namespace llvm;
-
-// Defines symbolic names for PTX registers.
-//#include "MapipGenRegisterNames.inc"
-
-// Defines symbolic names for the PTX instructions.
-//#include "MapipGenInstrNames.inc"
-
-#endif // MAPIP_H
+#endif

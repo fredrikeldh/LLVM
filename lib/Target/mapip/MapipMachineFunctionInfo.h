@@ -1,4 +1,4 @@
-//===- MapipMachineFuctionInfo.h - Mapip machine function info -------*- C++ -*-==//
+//====- MapipMachineFuctionInfo.h - Mapip machine function info -*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -11,72 +11,52 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef Mapip_MACHINE_FUNCTION_INFO_H
-#define Mapip_MACHINE_FUNCTION_INFO_H
+#ifndef MAPIPMACHINEFUNCTIONINFO_H
+#define MAPIPMACHINEFUNCTIONINFO_H
 
-#include "Mapip.h"
 #include "llvm/CodeGen/MachineFunction.h"
 
 namespace llvm {
-/// MapipMachineFunctionInfo - This class is derived from MachineFunction and
-/// contains private Mapip target-specific information for each MachineFunction.
-///
+
+/// MapipMachineFunctionInfo - This class is derived from MachineFunction
+/// private Mapip target-specific information for each MachineFunction.
 class MapipMachineFunctionInfo : public MachineFunctionInfo {
-private:
-  bool is_kernel;
-  std::vector<unsigned> reg_arg, reg_local_var;
-  unsigned reg_ret;
-  bool _isDoneAddArg;
+  /// GlobalBaseReg - keeps track of the virtual register initialized for
+  /// use as the global base register. This is used for PIC in some PIC
+  /// relocation models.
+  unsigned GlobalBaseReg;
+
+  /// GlobalRetAddr = keeps track of the virtual register initialized for
+  /// the return address value.
+  unsigned GlobalRetAddr;
+
+  /// VarArgsOffset - What is the offset to the first vaarg
+  int VarArgsOffset;
+  /// VarArgsBase - What is the base FrameIndex
+  int VarArgsBase;
 
 public:
-  MapipMachineFunctionInfo(MachineFunction &MF)
-    : is_kernel(false), reg_ret(Mapip::NoRegister), _isDoneAddArg(false) {
-      reg_arg.reserve(8);
-      reg_local_var.reserve(32);
-    }
+  MapipMachineFunctionInfo() : GlobalBaseReg(0), GlobalRetAddr(0),
+                               VarArgsOffset(0), VarArgsBase(0) {}
 
-  void setKernel(bool _is_kernel=true) { is_kernel = _is_kernel; }
+  explicit MapipMachineFunctionInfo(MachineFunction &MF) : GlobalBaseReg(0),
+                                                           GlobalRetAddr(0),
+                                                           VarArgsOffset(0),
+                                                           VarArgsBase(0) {}
 
-  void addArgReg(unsigned reg) { reg_arg.push_back(reg); }
-  void addLocalVarReg(unsigned reg) { reg_local_var.push_back(reg); }
-  void setRetReg(unsigned reg) { reg_ret = reg; }
+  unsigned getGlobalBaseReg() const { return GlobalBaseReg; }
+  void setGlobalBaseReg(unsigned Reg) { GlobalBaseReg = Reg; }
 
-  void doneAddArg(void) {
-    std::sort(reg_arg.begin(), reg_arg.end());
-    _isDoneAddArg = true;
-  }
-  void doneAddLocalVar(void) {
-    std::sort(reg_local_var.begin(), reg_local_var.end());
-  }
+  unsigned getGlobalRetAddr() const { return GlobalRetAddr; }
+  void setGlobalRetAddr(unsigned Reg) { GlobalRetAddr = Reg; }
 
-  bool isDoneAddArg(void) { return _isDoneAddArg; }
+  int getVarArgsOffset() const { return VarArgsOffset; }
+  void setVarArgsOffset(int Offset) { VarArgsOffset = Offset; }
 
-  bool isKernel() const { return is_kernel; }
+  int getVarArgsBase() const { return VarArgsBase; }
+  void setVarArgsBase(int Base) { VarArgsBase = Base; }
+};
 
-  typedef std::vector<unsigned>::const_iterator         reg_iterator;
-  typedef std::vector<unsigned>::const_reverse_iterator reg_reverse_iterator;
+} // End llvm namespace
 
-  bool         argRegEmpty() const { return reg_arg.empty(); }
-  int          getNumArg() const { return reg_arg.size(); }
-  reg_iterator argRegBegin() const { return reg_arg.begin(); }
-  reg_iterator argRegEnd()   const { return reg_arg.end(); }
-  reg_reverse_iterator argRegReverseBegin() const { return reg_arg.rbegin(); }
-  reg_reverse_iterator argRegReverseEnd() const { return reg_arg.rend(); }
-
-  bool         localVarRegEmpty() const { return reg_local_var.empty(); }
-  reg_iterator localVarRegBegin() const { return reg_local_var.begin(); }
-  reg_iterator localVarRegEnd()   const { return reg_local_var.end(); }
-
-  unsigned retReg() const { return reg_ret; }
-
-  bool isArgReg(unsigned reg) const {
-    return std::binary_search(reg_arg.begin(), reg_arg.end(), reg);
-  }
-
-  bool isLocalVarReg(unsigned reg) const {
-    return std::binary_search(reg_local_var.begin(), reg_local_var.end(), reg);
-  }
-}; // class MapipMachineFunctionInfo
-} // namespace llvm
-
-#endif // Mapip_MACHINE_FUNCTION_INFO_H
+#endif

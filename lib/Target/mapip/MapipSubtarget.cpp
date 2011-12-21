@@ -1,4 +1,4 @@
-//===- MapipSubtarget.cpp - Mapip Subtarget Information ---------------*- C++ -*-=//
+//===- MapipSubtarget.cpp - Mapip Subtarget Information ---------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,40 +7,29 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements the Mapip specific subclass of TargetSubtarget.
+// This file implements the Mapip specific subclass of TargetSubtargetInfo.
 //
 //===----------------------------------------------------------------------===//
 
 #include "MapipSubtarget.h"
-#include "llvm/Support/ErrorHandling.h"
+#include "Mapip.h"
+
+#define GET_SUBTARGETINFO_TARGET_DESC
+#define GET_SUBTARGETINFO_CTOR
+#include "MapipGenSubtargetInfo.inc"
 
 using namespace llvm;
 
-MapipSubtarget::MapipSubtarget(const std::string &TT, const std::string &FS)
-  : MapipShaderModel(Mapip_SM_1_0),
-    MapipVersion(Mapip_VERSION_1_4),
-    SupportsDouble(false),
-    Use64BitAddresses(false) {
-  std::string TARGET = "generic";
-  ParseSubtargetFeatures(FS, TARGET);
-}
+MapipSubtarget::MapipSubtarget(const std::string &TT, const std::string &CPU,
+                               const std::string &FS)
+  : MapipGenSubtargetInfo(TT, CPU, FS), HasCT(false) {
+  std::string CPUName = CPU;
+  if (CPUName.empty())
+    CPUName = "generic";
 
-std::string MapipSubtarget::getTargetString() const {
-  switch(MapipShaderModel) {
-    default: llvm_unreachable("Unknown shader model");
-    case Mapip_SM_1_0: return "sm_10";
-    case Mapip_SM_1_3: return "sm_13";
-    case Mapip_SM_2_0: return "sm_20";
-  }
-}
+  // Parse features string.
+  ParseSubtargetFeatures(CPUName, FS);
 
-std::string MapipSubtarget::getMapipVersionString() const {
-  switch(MapipVersion) {
-    default: llvm_unreachable("Unknown Mapip version");
-    case Mapip_VERSION_1_4: return "1.4";
-    case Mapip_VERSION_2_0: return "2.0";
-    case Mapip_VERSION_2_1: return "2.1";
-  }
+  // Initialize scheduling itinerary for the specified CPU.
+  InstrItins = getInstrItineraryForCPU(CPUName);
 }
-
-#include "MapipGenSubtarget.inc"
