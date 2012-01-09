@@ -225,14 +225,10 @@ def : Pat<(select (setle GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
 
 multiclass all_inst<bits<6> opc, bits<7> funl, bits<7> funq,
                     string asmstr, PatFrag OpNode, InstrItinClass itin> {
-  def Lr : OForm< opc, funl, !strconcat(asmstr, "l $RA,$RB,$RC"),
+  def Lr : OForm< opc, funl, !strconcat(asmstr, " $RA,$RB"),
                [(set GPRC:$RC, (intop (OpNode GPRC:$RA, GPRC:$RB)))], itin>;
-  def Li : OFormL<opc, funl, !strconcat(asmstr, "l $RA,$L,$RC"),
+  def Li : OFormL<opc, funl, !strconcat(asmstr, "i $RA,$L"),
                [(set GPRC:$RC, (intop (OpNode GPRC:$RA, immUExt8:$L)))], itin>;
-  def Qr : OForm< opc, funq, !strconcat(asmstr, "q $RA,$RB,$RC"),
-               [(set GPRC:$RC, (OpNode GPRC:$RA, GPRC:$RB))], itin>;
-  def Qi : OFormL<opc, funq, !strconcat(asmstr, "q $RA,$L,$RC"),
-               [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt8:$L))], itin>;
 }
 
 defm MUL   : all_inst<0x13, 0x00, 0x20, "mul",   BinOpFrag<(mul node:$LHS, node:$RHS)>, s_imul>;
@@ -244,22 +240,19 @@ defm S8SUB : all_inst<0x10, 0x1B, 0x3B, "s8sub", sub8, s_iadd>;
 defm SUB   : all_inst<0x10, 0x09, 0x29, "sub",   BinOpFrag<(sub node:$LHS, node:$RHS)>, s_iadd>;
 //Const cases since legalize does sub x, int -> add x, inv(int) + 1
 def : Pat<(intop (add GPRC:$RA, immUExt8neg:$L)), (SUBLi GPRC:$RA, immUExt8neg:$L)>;
-def : Pat<(add GPRC:$RA, immUExt8neg:$L), (SUBQi GPRC:$RA, immUExt8neg:$L)>;
 def : Pat<(intop (add4 GPRC:$RA, immUExt8neg:$L)), (S4SUBLi GPRC:$RA, immUExt8neg:$L)>;
-def : Pat<(add4 GPRC:$RA, immUExt8neg:$L), (S4SUBQi GPRC:$RA, immUExt8neg:$L)>;
 def : Pat<(intop (add8 GPRC:$RA, immUExt8neg:$L)), (S8SUBLi GPRC:$RA, immUExt8neg:$L)>;
-def : Pat<(add8 GPRC:$RA, immUExt8neg:$L), (S8SUBQi GPRC:$RA, immUExt8neg:$L)>;
 
 multiclass log_inst<bits<6> opc, bits<7> fun, string asmstr, SDNode OpNode, InstrItinClass itin> {
-def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB,$RC"),
+def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB"),
               [(set GPRC:$RC, (OpNode GPRC:$RA, GPRC:$RB))], itin>;
-def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L,$RC"),
+def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L"),
               [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt8:$L))], itin>;
 }
 multiclass inv_inst<bits<6> opc, bits<7> fun, string asmstr, SDNode OpNode, InstrItinClass itin> {
-def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB,$RC"),
+def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB"),
               [(set GPRC:$RC, (OpNode GPRC:$RA, (not GPRC:$RB)))], itin>;
-def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L,$RC"),
+def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L"),
               [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt8inv:$L))], itin>;
 }
 
@@ -1113,47 +1106,3 @@ def : Pat<(fcopysign F4RC:$A, (fneg F8RC:$B)),
           (CPYSNSt F8RC:$B, F4RC:$A)>;
 def : Pat<(fcopysign F8RC:$A, (fneg F4RC:$B)),
           (CPYSNTs F4RC:$B, F8RC:$A)>;
-
-//Yes, signed multiply high is ugly
-def : Pat<(mulhs GPRC:$RA, GPRC:$RB),
-          (SUBQr (UMULHr GPRC:$RA, GPRC:$RB), (ADDQr (CMOVGEr GPRC:$RB, R31, GPRC:$RA),
-                                                     (CMOVGEr GPRC:$RA, R31, GPRC:$RB)))>;
-
-//Stupid crazy arithmetic stuff:
-let AddedComplexity = 1 in {
-def : Pat<(mul GPRC:$RA, 5), (S4ADDQr GPRC:$RA, GPRC:$RA)>;
-def : Pat<(mul GPRC:$RA, 9), (S8ADDQr GPRC:$RA, GPRC:$RA)>;
-def : Pat<(mul GPRC:$RA, 3), (S4SUBQr GPRC:$RA, GPRC:$RA)>;
-def : Pat<(mul GPRC:$RA, 7), (S8SUBQr GPRC:$RA, GPRC:$RA)>;
-
-//slight tree expansion if we are multiplying near to a power of 2
-//n is above a power of 2
-def : Pat<(mul GPRC:$RA, immRem1:$imm),
-          (ADDQr (SLr GPRC:$RA, (nearP2X immRem1:$imm)), GPRC:$RA)>;
-def : Pat<(mul GPRC:$RA, immRem2:$imm),
-          (ADDQr (SLr GPRC:$RA, (nearP2X immRem2:$imm)), (ADDQr GPRC:$RA, GPRC:$RA))>;
-def : Pat<(mul GPRC:$RA, immRem3:$imm),
-          (ADDQr (SLr GPRC:$RA, (nearP2X immRem3:$imm)), (S4SUBQr GPRC:$RA, GPRC:$RA))>;
-def : Pat<(mul GPRC:$RA, immRem4:$imm),
-          (S4ADDQr GPRC:$RA, (SLr GPRC:$RA, (nearP2X immRem4:$imm)))>;
-def : Pat<(mul GPRC:$RA, immRem5:$imm),
-          (ADDQr (SLr GPRC:$RA, (nearP2X immRem5:$imm)), (S4ADDQr GPRC:$RA, GPRC:$RA))>;
-def : Pat<(mul GPRC:$RA, immRemP2:$imm),
-          (ADDQr (SLr GPRC:$RA, (nearP2X immRemP2:$imm)), (SLi GPRC:$RA, (nearP2RemX immRemP2:$imm)))>;
-
-//n is below a power of 2
-//FIXME: figure out why something is truncating the imm to 32bits
-// this will fix 2007-11-27-mulneg3
-//def : Pat<(mul GPRC:$RA, immRem1n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRem1n:$imm)), GPRC:$RA)>;
-//def : Pat<(mul GPRC:$RA, immRem2n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRem2n:$imm)), (ADDQr GPRC:$RA, GPRC:$RA))>;
-//def : Pat<(mul GPRC:$RA, immRem3n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRem3n:$imm)), (S4SUBQr GPRC:$RA, GPRC:$RA))>;
-//def : Pat<(mul GPRC:$RA, immRem4n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRem4n:$imm)), (SLi GPRC:$RA, 2))>;
-//def : Pat<(mul GPRC:$RA, immRem5n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRem5n:$imm)), (S4ADDQr GPRC:$RA, GPRC:$RA))>;
-//def : Pat<(mul GPRC:$RA, immRemP2n:$imm),
-//          (SUBQr (SLr GPRC:$RA, (nearP2X immRemP2n:$imm)), (SLi GPRC:$RA, (nearP2RemX immRemP2n:$imm)))>;
-} //Added complexity

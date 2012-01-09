@@ -920,7 +920,7 @@ MapipTargetLowering::EmitInstrWithCustomInserter(MachineInstr *MI,
   }
   case Mapip::LAS32:
   case Mapip::LAS64: {
-    BuildMI(llscMBB, dl,TII->get(is32 ? Mapip::ADDLr : Mapip::ADDQr), reg_store)
+    BuildMI(llscMBB, dl, TII->get(Mapip::ADDLr), reg_store)
       .addReg(reg_res).addReg(reg_v2);
     break;
   }
