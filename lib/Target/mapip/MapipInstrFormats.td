@@ -137,6 +137,7 @@ class OForm<bits<6> opcode, bits<7> fun, string asmstr, list<dag> pattern, Instr
   let Pattern = pattern;
   let OutOperandList = (outs GPRC:$RC);
   let InOperandList = (ins GPRC:$RA, GPRC:$RB);
+	let Constraints = "$RA = $RC";
 
   bits<5> Rc;
   bits<5> Ra;
@@ -197,6 +198,7 @@ class OFormL<bits<6> opcode, bits<7> fun, string asmstr, list<dag> pattern, Inst
   let Pattern = pattern;
   let OutOperandList = (outs GPRC:$RC);
   let InOperandList = (ins GPRC:$RA, u8imm:$L);
+	let Constraints = "$RA = $RC";
 
   bits<5> Rc;
   bits<5> Ra;
