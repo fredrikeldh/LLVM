@@ -134,10 +134,10 @@ namespace {
       : SelectionDAGISel(TM)
     {}
 
-    /// getI64Imm - Return a target constant with the specified value, of type
-    /// i64.
-    inline SDValue getI64Imm(int64_t Imm) {
-      return CurDAG->getTargetConstant(Imm, MVT::i64);
+    /// getI32Imm - Return a target constant with the specified value, of type
+    /// i32.
+    inline SDValue getI32Imm(int32_t Imm) {
+      return CurDAG->getTargetConstant(Imm, MVT::i32);
     }
 
     // Select - Convert the specified operand from a target-independent to a
@@ -220,7 +220,7 @@ SDNode *MapipDAGToDAGISel::Select(SDNode *N) {
     int FI = cast<FrameIndexSDNode>(N)->getIndex();
     return CurDAG->SelectNodeTo(N, Mapip::LDA, MVT::i64,
                                 CurDAG->getTargetFrameIndex(FI, MVT::i32),
-                                getI64Imm(0));
+                                getI32Imm(0));
   }
   case ISD::GLOBAL_OFFSET_TABLE:
     return getGlobalBaseReg();
@@ -374,11 +374,11 @@ SDNode *MapipDAGToDAGISel::Select(SDNode *N) {
 
       if (get_zapImm(mask)) {
         SDValue Z =
-          SDValue(CurDAG->getMachineNode(Mapip::ZAPNOTi, dl, MVT::i64,
+          SDValue(CurDAG->getMachineNode(Mapip::ZAPNOTi, dl, MVT::i32,
                                          N->getOperand(0).getOperand(0),
-                                         getI64Imm(get_zapImm(mask))), 0);
-        return CurDAG->getMachineNode(Mapip::SRLr, dl, MVT::i64, Z,
-                                      getI64Imm(sval));
+                                         getI32Imm(get_zapImm(mask))), 0);
+        return CurDAG->getMachineNode(Mapip::SRLr, dl, MVT::i32, Z,
+                                      getI32Imm(sval));
       }
     }
     break;

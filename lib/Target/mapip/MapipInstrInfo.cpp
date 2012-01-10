@@ -126,10 +126,6 @@ void MapipInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     BuildMI(MBB, MI, DL, get(Mapip::BISr), DestReg)
       .addReg(SrcReg)
       .addReg(SrcReg, getKillRegState(KillSrc));
-  } else if (Mapip::F4RCRegClass.contains(DestReg, SrcReg)) {
-    BuildMI(MBB, MI, DL, get(Mapip::CPYSS), DestReg)
-      .addReg(SrcReg)
-      .addReg(SrcReg, getKillRegState(KillSrc));
   } else if (Mapip::F8RCRegClass.contains(DestReg, SrcReg)) {
     BuildMI(MBB, MI, DL, get(Mapip::CPYST), DestReg)
       .addReg(SrcReg)
@@ -152,11 +148,7 @@ MapipInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   DebugLoc DL;
   if (MI != MBB.end()) DL = MI->getDebugLoc();
 
-  if (RC == Mapip::F4RCRegisterClass)
-    BuildMI(MBB, MI, DL, get(Mapip::STS))
-      .addReg(SrcReg, getKillRegState(isKill))
-      .addFrameIndex(FrameIdx).addReg(Mapip::F31);
-  else if (RC == Mapip::F8RCRegisterClass)
+  if (RC == Mapip::F8RCRegisterClass)
     BuildMI(MBB, MI, DL, get(Mapip::STT))
       .addReg(SrcReg, getKillRegState(isKill))
       .addFrameIndex(FrameIdx).addReg(Mapip::F31);
@@ -179,10 +171,7 @@ MapipInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   DebugLoc DL;
   if (MI != MBB.end()) DL = MI->getDebugLoc();
 
-  if (RC == Mapip::F4RCRegisterClass)
-    BuildMI(MBB, MI, DL, get(Mapip::LDS), DestReg)
-      .addFrameIndex(FrameIdx).addReg(Mapip::F31);
-  else if (RC == Mapip::F8RCRegisterClass)
+  if (RC == Mapip::F8RCRegisterClass)
     BuildMI(MBB, MI, DL, get(Mapip::LDT), DestReg)
       .addFrameIndex(FrameIdx).addReg(Mapip::F31);
   else if (RC == Mapip::GPRCRegisterClass)

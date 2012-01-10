@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "alpha-nops"
+#define DEBUG_TYPE "mapip-nops"
 #include "Mapip.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -27,9 +27,6 @@ STATISTIC(nopintro, "Number of nops inserted");
 STATISTIC(nopalign, "Number of nops inserted for alignment");
 
 namespace {
-  cl::opt<bool>
-  AlignAll("alpha-align-all", cl::Hidden,
-                   cl::desc("Align all blocks"));
 
   struct MapipLLRPPass : public MachineFunctionPass {
     /// Target machine description which we query for reg. names, data
@@ -134,7 +131,7 @@ namespace {
             break;
           }
         }
-        if (ub || AlignAll) {
+        if (ub) {
           //we can align stuff for free at this point
           while (count % 4) {
             BuildMI(MBB, MBB.end(), dl, TII->get(Mapip::BISr), Mapip::R31)

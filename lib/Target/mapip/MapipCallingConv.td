@@ -25,14 +25,14 @@ def RetCC_Mapip : CallingConv<[
 // Mapip Argument Calling Conventions
 //===----------------------------------------------------------------------===//
 def CC_Mapip : CallingConv<[
-  // The first 6 arguments are passed in registers, whether integer or
+  CCIfType<[i8, i16], CCPromoteToType<i32>>,
+
+	// The first 6 arguments are passed in registers, whether integer or
   // floating-point
-  CCIfType<[i64], CCAssignToRegWithShadow<[R16, R17, R18, R19, R20, R21],
-                                          [F16, F17, F18, F19, F20, F21]>>,
+  CCIfType<[i32], CCAssignToReg<[R16, R17, R18, R19, R20, R21]>>,
 
-  CCIfType<[f32, f64], CCAssignToRegWithShadow<[F16, F17, F18, F19, F20, F21],
-                                               [R16, R17, R18, R19, R20, R21]>>,
+  CCIfType<[f64], CCAssignToReg<[F16, F17, F18, F19, F20, F21]>>,
 
-  // Stack slots are 8 bytes in size and 8-byte aligned.
-  CCIfType<[i64, f32, f64], CCAssignToStack<8, 8>>
+  // Stack slots are 4 bytes in size and 4-byte aligned.
+  CCIfType<[i32, f64], CCAssignToStack<4, 4>>
 ]>;

@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "alpha-selectiondag-info"
+#define DEBUG_TYPE "mapip-selectiondag-info"
 #include "MapipTargetMachine.h"
 using namespace llvm;
 

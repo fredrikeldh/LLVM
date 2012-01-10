@@ -17,12 +17,11 @@
 //Floating-point
 //PALcode
 
-def u8imm   : Operand<i64>;
-def s14imm  : Operand<i64>;
-def s16imm  : Operand<i64>;
-def s21imm  : Operand<i64>;
-def s64imm  : Operand<i64>;
-def u64imm  : Operand<i64>;
+def u8imm   : Operand<i32>;
+def s16imm  : Operand<i32>;
+def s24imm  : Operand<i32>;
+def s32imm  : Operand<i32>;
+def u32imm  : Operand<i32>;
 
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
@@ -216,7 +215,7 @@ class OForm4L<bits<6> opcode, bits<7> fun, string asmstr, list<dag> pattern, Ins
     : InstMapip<opcode, asmstr, itin> {
   let Pattern = pattern;
   let OutOperandList = (outs GPRC:$RDEST);
-  let InOperandList = (ins GPRC:$RCOND, s64imm:$RTRUE, GPRC:$RFALSE);
+  let InOperandList = (ins GPRC:$RCOND, s32imm:$RTRUE, GPRC:$RFALSE);
   let Constraints = "$RFALSE = $RDEST";
   let DisableEncoding = "$RFALSE";
 

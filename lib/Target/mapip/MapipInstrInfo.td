@@ -30,9 +30,9 @@ def retflag       : SDNode<"MapipISD::RET_FLAG", SDTNone,
                            [SDNPHasChain, SDNPOptInGlue]>;
 
 // These are target-independent nodes, but have target-specific formats.
-def SDT_MapipCallSeqStart : SDCallSeqStart<[ SDTCisVT<0, i64> ]>;
-def SDT_MapipCallSeqEnd   : SDCallSeqEnd<[ SDTCisVT<0, i64>,
-                                           SDTCisVT<1, i64> ]>;
+def SDT_MapipCallSeqStart : SDCallSeqStart<[ SDTCisVT<0, i32> ]>;
+def SDT_MapipCallSeqEnd   : SDCallSeqEnd<[ SDTCisVT<0, i32>,
+                                           SDTCisVT<1, i32> ]>;
 
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_MapipCallSeqStart,
                            [SDNPHasChain, SDNPOutGlue]>;
@@ -43,59 +43,35 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_MapipCallSeqEnd,
 //Paterns for matching
 //********************
 def invX : SDNodeXForm<imm, [{ //invert
-  return getI64Imm(~N->getZExtValue());
+  return getI32Imm(~N->getZExtValue());
 }]>;
 def negX : SDNodeXForm<imm, [{ //negate
-  return getI64Imm(~N->getZExtValue() + 1);
-}]>;
-def SExt32 : SDNodeXForm<imm, [{ //signed extend int to long
-  return getI64Imm(((int64_t)N->getZExtValue() << 32) >> 32);
-}]>;
-def SExt16 : SDNodeXForm<imm, [{ //signed extend int to long
-  return getI64Imm(((int64_t)N->getZExtValue() << 48) >> 48);
-}]>;
-def LL16 : SDNodeXForm<imm, [{ //lda part of constant
-  return getI64Imm(get_lda16(N->getZExtValue()));
-}]>;
-def LH16 : SDNodeXForm<imm, [{ //ldah part of constant (or more if too big)
-  return getI64Imm(get_ldah16(N->getZExtValue()));
+  return getI32Imm(~N->getZExtValue() + 1);
 }]>;
 def iZAPX : SDNodeXForm<and, [{ // get imm to ZAPi
   ConstantSDNode *RHS = cast<ConstantSDNode>(N->getOperand(1));
-  return getI64Imm(get_zapImm(SDValue(), RHS->getZExtValue()));
+  return getI32Imm(get_zapImm(SDValue(), RHS->getZExtValue()));
 }]>;
 def nearP2X : SDNodeXForm<imm, [{
-  return getI64Imm(Log2_64(getNearPower2((uint64_t)N->getZExtValue())));
+  return getI32Imm(Log2_32(getNearPower2((uint32_t)N->getZExtValue())));
 }]>;
 def nearP2RemX : SDNodeXForm<imm, [{
-  uint64_t x =
-    abs64(N->getZExtValue() - getNearPower2((uint64_t)N->getZExtValue()));
-  return getI64Imm(Log2_64(x));
+  uint32_t x =
+    abs32(N->getZExtValue() - getNearPower2((uint32_t)N->getZExtValue()));
+  return getI32Imm(Log2_32(x));
 }]>;
 
-def immUExt8  : PatLeaf<(imm), [{ //imm fits in 8 bit zero extended field
-  return (uint64_t)N->getZExtValue() == (uint8_t)N->getZExtValue();
+def immUExt  : PatLeaf<(imm), [{ //imm fits in 32 bit zero extended field
+	return (uint32_t)N->getZExtValue();
 }]>;
-def immUExt8inv  : PatLeaf<(imm), [{ //inverted imm fits in 8 bit zero extended field
-  return (uint64_t)~N->getZExtValue() == (uint8_t)~N->getZExtValue();
-}], invX>;
-def immUExt8neg  : PatLeaf<(imm), [{ //negated imm fits in 8 bit zero extended field
-  return ((uint64_t)~N->getZExtValue() + 1) ==
-         (uint8_t)((uint64_t)~N->getZExtValue() + 1);
-}], negX>;
-def immSExt16  : PatLeaf<(imm), [{ //imm fits in 16 bit sign extended field
-  return ((int64_t)N->getZExtValue() << 48) >> 48 ==
-         (int64_t)N->getZExtValue();
+def immSExt16  : PatLeaf<(imm), [{ //imm fits in 32 bit sign extended field
+	return (int32_t)N->getSExtValue();
 }]>;
-def immSExt16int  : PatLeaf<(imm), [{ //(int)imm fits in a 16 bit sign extended field
-  return ((int64_t)N->getZExtValue() << 48) >> 48 ==
-         ((int64_t)N->getZExtValue() << 32) >> 32;
-}], SExt16>;
 
 def zappat : PatFrag<(ops node:$LHS), (and node:$LHS, imm), [{
   ConstantSDNode *RHS = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!RHS) return 0;
-  uint64_t build = get_zapImm(N->getOperand(0), (uint64_t)RHS->getZExtValue());
+  uint32_t build = get_zapImm(N->getOperand(0), (uint32_t)RHS->getZExtValue());
   return build != 0;
 }]>;
 
@@ -133,7 +109,6 @@ def immUExt8ME : PatLeaf<(imm), [{ //use this imm for mulqi
   };
 }]>;
 
-def intop : PatFrag<(ops node:$op), (sext_inreg node:$op, i32)>;
 def add4  : PatFrag<(ops node:$op1, node:$op2),
                     (add (shl node:$op1, 2), node:$op2)>;
 def sub4  : PatFrag<(ops node:$op1, node:$op2),
@@ -150,17 +125,17 @@ class CmpOpFrag<dag res> : PatFrag<(ops node:$R), res>;
 def WTF : PseudoInstMapip<(outs), (ins variable_ops), "#wtf", [], s_pseudo>;
 
 let hasCtrlDep = 1, Defs = [R30], Uses = [R30] in {
-def ADJUSTSTACKUP : PseudoInstMapip<(outs), (ins s64imm:$amt),
+def ADJUSTSTACKUP : PseudoInstMapip<(outs), (ins s32imm:$amt),
                 "; ADJUP $amt",
                 [(callseq_start timm:$amt)], s_pseudo>;
-def ADJUSTSTACKDOWN : PseudoInstMapip<(outs), (ins s64imm:$amt1, s64imm:$amt2),
+def ADJUSTSTACKDOWN : PseudoInstMapip<(outs), (ins s32imm:$amt1, s32imm:$amt2),
                 "; ADJDOWN $amt1",
                 [(callseq_end timm:$amt1, timm:$amt2)], s_pseudo>;
 }
 
-def ALTENT : PseudoInstMapip<(outs), (ins s64imm:$TARGET), "$$$TARGET..ng:\n", [], s_pseudo>;
-def PCLABEL : PseudoInstMapip<(outs), (ins s64imm:$num), "PCMARKER_$num:\n",[], s_pseudo>;
-def MEMLABEL : PseudoInstMapip<(outs), (ins s64imm:$i, s64imm:$j, s64imm:$k, s64imm:$m),
+def ALTENT : PseudoInstMapip<(outs), (ins s32imm:$TARGET), "$$$TARGET..ng:\n", [], s_pseudo>;
+def PCLABEL : PseudoInstMapip<(outs), (ins s32imm:$num), "PCMARKER_$num:\n",[], s_pseudo>;
+def MEMLABEL : PseudoInstMapip<(outs), (ins s32imm:$i, s32imm:$j, s32imm:$k, s32imm:$m),
          "LSMARKER$$$i$$$j$$$k$$$m:", [], s_pseudo>;
 
 
@@ -193,7 +168,7 @@ multiclass cmov_inst<bits<7> fun, string asmstr, PatFrag OpNode> {
 def r : OForm4<0x11, fun, !strconcat(asmstr, " $RCOND,$RTRUE,$RDEST"),
              [(set GPRC:$RDEST, (select (OpNode GPRC:$RCOND), GPRC:$RTRUE, GPRC:$RFALSE))], s_cmov>;
 def i : OForm4L<0x11, fun, !strconcat(asmstr, " $RCOND,$RTRUE,$RDEST"),
-             [(set GPRC:$RDEST, (select (OpNode GPRC:$RCOND), immUExt8:$RTRUE, GPRC:$RFALSE))], s_cmov>;
+             [(set GPRC:$RDEST, (select (OpNode GPRC:$RCOND), immUExt:$RTRUE, GPRC:$RFALSE))], s_cmov>;
 }
 
 defm CMOVEQ  : cmov_inst<0x24, "cmoveq",  CmpOpFrag<(seteq node:$R, 0)>>;
@@ -208,60 +183,43 @@ defm CMOVLBS : cmov_inst<0x14, "cmovlbs", CmpOpFrag<(and   node:$R, 1)>>;
 //General pattern for cmov
 def : Pat<(select GPRC:$which, GPRC:$src1, GPRC:$src2),
       (CMOVNEr GPRC:$src2, GPRC:$src1, GPRC:$which)>;
-def : Pat<(select GPRC:$which, GPRC:$src1, immUExt8:$src2),
-      (CMOVEQi GPRC:$src1, immUExt8:$src2, GPRC:$which)>;
+def : Pat<(select GPRC:$which, GPRC:$src1, immUExt:$src2),
+      (CMOVEQi GPRC:$src1, immUExt:$src2, GPRC:$which)>;
 
 //Invert sense when we can for constants:
-def : Pat<(select (setne GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
-          (CMOVEQi GPRC:$RCOND, immUExt8:$RFALSE, GPRC:$RTRUE)>;
-def : Pat<(select (setgt GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
-          (CMOVLEi GPRC:$RCOND, immUExt8:$RFALSE, GPRC:$RTRUE)>;
-def : Pat<(select (setge GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
-          (CMOVLTi GPRC:$RCOND, immUExt8:$RFALSE, GPRC:$RTRUE)>;
-def : Pat<(select (setlt GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
-          (CMOVGEi GPRC:$RCOND, immUExt8:$RFALSE, GPRC:$RTRUE)>;
-def : Pat<(select (setle GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt8:$RFALSE),
-          (CMOVGTi GPRC:$RCOND, immUExt8:$RFALSE, GPRC:$RTRUE)>;
+def : Pat<(select (setne GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt:$RFALSE),
+          (CMOVEQi GPRC:$RCOND, immUExt:$RFALSE, GPRC:$RTRUE)>;
+def : Pat<(select (setgt GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt:$RFALSE),
+          (CMOVLEi GPRC:$RCOND, immUExt:$RFALSE, GPRC:$RTRUE)>;
+def : Pat<(select (setge GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt:$RFALSE),
+          (CMOVLTi GPRC:$RCOND, immUExt:$RFALSE, GPRC:$RTRUE)>;
+def : Pat<(select (setlt GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt:$RFALSE),
+          (CMOVGEi GPRC:$RCOND, immUExt:$RFALSE, GPRC:$RTRUE)>;
+def : Pat<(select (setle GPRC:$RCOND, 0), GPRC:$RTRUE, immUExt:$RFALSE),
+          (CMOVGTi GPRC:$RCOND, immUExt:$RFALSE, GPRC:$RTRUE)>;
 
 multiclass all_inst<bits<6> opc, bits<7> funl, bits<7> funq,
                     string asmstr, PatFrag OpNode, InstrItinClass itin> {
   def Lr : OForm< opc, funl, !strconcat(asmstr, " $RA,$RB"),
-               [(set GPRC:$RC, (intop (OpNode GPRC:$RA, GPRC:$RB)))], itin>;
+               [(set GPRC:$RC, (OpNode GPRC:$RA, GPRC:$RB))], itin>;
   def Li : OFormL<opc, funl, !strconcat(asmstr, "i $RA,$L"),
-               [(set GPRC:$RC, (intop (OpNode GPRC:$RA, immUExt8:$L)))], itin>;
+               [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt:$L))], itin>;
 }
 
 defm MUL   : all_inst<0x13, 0x00, 0x20, "mul",   BinOpFrag<(mul node:$LHS, node:$RHS)>, s_imul>;
 defm ADD   : all_inst<0x10, 0x00, 0x20, "add",   BinOpFrag<(add node:$LHS, node:$RHS)>, s_iadd>;
-defm S4ADD : all_inst<0x10, 0x02, 0x22, "s4add", add4, s_iadd>;
-defm S8ADD : all_inst<0x10, 0x12, 0x32, "s8add", add8, s_iadd>;
-defm S4SUB : all_inst<0x10, 0x0B, 0x2B, "s4sub", sub4, s_iadd>;
-defm S8SUB : all_inst<0x10, 0x1B, 0x3B, "s8sub", sub8, s_iadd>;
 defm SUB   : all_inst<0x10, 0x09, 0x29, "sub",   BinOpFrag<(sub node:$LHS, node:$RHS)>, s_iadd>;
-//Const cases since legalize does sub x, int -> add x, inv(int) + 1
-def : Pat<(intop (add GPRC:$RA, immUExt8neg:$L)), (SUBLi GPRC:$RA, immUExt8neg:$L)>;
-def : Pat<(intop (add4 GPRC:$RA, immUExt8neg:$L)), (S4SUBLi GPRC:$RA, immUExt8neg:$L)>;
-def : Pat<(intop (add8 GPRC:$RA, immUExt8neg:$L)), (S8SUBLi GPRC:$RA, immUExt8neg:$L)>;
 
 multiclass log_inst<bits<6> opc, bits<7> fun, string asmstr, SDNode OpNode, InstrItinClass itin> {
 def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB"),
               [(set GPRC:$RC, (OpNode GPRC:$RA, GPRC:$RB))], itin>;
 def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L"),
-              [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt8:$L))], itin>;
-}
-multiclass inv_inst<bits<6> opc, bits<7> fun, string asmstr, SDNode OpNode, InstrItinClass itin> {
-def r : OForm<opc, fun, !strconcat(asmstr, " $RA,$RB"),
-              [(set GPRC:$RC, (OpNode GPRC:$RA, (not GPRC:$RB)))], itin>;
-def i : OFormL<opc, fun, !strconcat(asmstr, " $RA,$L"),
-              [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt8inv:$L))], itin>;
+              [(set GPRC:$RC, (OpNode GPRC:$RA, immUExt:$L))], itin>;
 }
 
 defm AND   : log_inst<0x11, 0x00, "and",   and,   s_ilog>;
-defm BIC   : inv_inst<0x11, 0x08, "bic",   and,   s_ilog>;
 defm BIS   : log_inst<0x11, 0x20, "bis",   or,    s_ilog>;
-defm ORNOT : inv_inst<0x11, 0x28, "ornot", or,    s_ilog>;
 defm XOR   : log_inst<0x11, 0x40, "xor",   xor,   s_ilog>;
-defm EQV   : inv_inst<0x11, 0x48, "eqv",   xor,   s_ilog>;
 
 defm SL    : log_inst<0x12, 0x39, "sll",   shl,   s_ishf>;
 defm SRA   : log_inst<0x12, 0x3c, "sra",   sra,   s_ishf>;
@@ -339,49 +297,49 @@ def : Pat<(zappat:$imm GPRC:$RA),
 def CMPBGE  : OForm< 0x10, 0x0F, "cmpbge $RA,$RB,$RC",
                      [(set GPRC:$RC, (setuge (and GPRC:$RA, 255), (and GPRC:$RB, 255)))], s_ilog>;
 def CMPBGEi : OFormL<0x10, 0x0F, "cmpbge $RA,$L,$RC",
-                     [(set GPRC:$RC, (setuge (and GPRC:$RA, 255), immUExt8:$L))], s_ilog>;
+                     [(set GPRC:$RC, (setuge (and GPRC:$RA, 255), immUExt:$L))], s_ilog>;
 def CMPEQ   : OForm< 0x10, 0x2D, "cmpeq $RA,$RB,$RC",
                      [(set GPRC:$RC, (seteq GPRC:$RA, GPRC:$RB))], s_iadd>;
 def CMPEQi  : OFormL<0x10, 0x2D, "cmpeq $RA,$L,$RC",
-                     [(set GPRC:$RC, (seteq GPRC:$RA, immUExt8:$L))], s_iadd>;
+                     [(set GPRC:$RC, (seteq GPRC:$RA, immUExt:$L))], s_iadd>;
 def CMPLE   : OForm< 0x10, 0x6D, "cmple $RA,$RB,$RC",
                      [(set GPRC:$RC, (setle GPRC:$RA, GPRC:$RB))], s_iadd>;
 def CMPLEi  : OFormL<0x10, 0x6D, "cmple $RA,$L,$RC",
-                     [(set GPRC:$RC, (setle GPRC:$RA, immUExt8:$L))], s_iadd>;
+                     [(set GPRC:$RC, (setle GPRC:$RA, immUExt:$L))], s_iadd>;
 def CMPLT   : OForm< 0x10, 0x4D, "cmplt $RA,$RB,$RC",
                      [(set GPRC:$RC, (setlt GPRC:$RA, GPRC:$RB))], s_iadd>;
 def CMPLTi  : OFormL<0x10, 0x4D, "cmplt $RA,$L,$RC",
-                     [(set GPRC:$RC, (setlt GPRC:$RA, immUExt8:$L))], s_iadd>;
+                     [(set GPRC:$RC, (setlt GPRC:$RA, immUExt:$L))], s_iadd>;
 def CMPULE  : OForm< 0x10, 0x3D, "cmpule $RA,$RB,$RC",
                      [(set GPRC:$RC, (setule GPRC:$RA, GPRC:$RB))], s_iadd>;
 def CMPULEi : OFormL<0x10, 0x3D, "cmpule $RA,$L,$RC",
-                     [(set GPRC:$RC, (setule GPRC:$RA, immUExt8:$L))], s_iadd>;
+                     [(set GPRC:$RC, (setule GPRC:$RA, immUExt:$L))], s_iadd>;
 def CMPULT  : OForm< 0x10, 0x1D, "cmpult $RA,$RB,$RC",
                      [(set GPRC:$RC, (setult GPRC:$RA, GPRC:$RB))], s_iadd>;
 def CMPULTi : OFormL<0x10, 0x1D, "cmpult $RA,$L,$RC",
-                      [(set GPRC:$RC, (setult GPRC:$RA, immUExt8:$L))], s_iadd>;
+                      [(set GPRC:$RC, (setult GPRC:$RA, immUExt:$L))], s_iadd>;
 
 //Patterns for unsupported int comparisons
 def : Pat<(setueq GPRC:$X, GPRC:$Y), (CMPEQ GPRC:$X, GPRC:$Y)>;
-def : Pat<(setueq GPRC:$X, immUExt8:$Y), (CMPEQi GPRC:$X, immUExt8:$Y)>;
+def : Pat<(setueq GPRC:$X, immUExt:$Y), (CMPEQi GPRC:$X, immUExt:$Y)>;
 
 def : Pat<(setugt GPRC:$X, GPRC:$Y), (CMPULT GPRC:$Y, GPRC:$X)>;
-def : Pat<(setugt immUExt8:$X, GPRC:$Y), (CMPULTi GPRC:$Y, immUExt8:$X)>;
+def : Pat<(setugt immUExt:$X, GPRC:$Y), (CMPULTi GPRC:$Y, immUExt:$X)>;
 
 def : Pat<(setuge GPRC:$X, GPRC:$Y), (CMPULE GPRC:$Y, GPRC:$X)>;
-def : Pat<(setuge immUExt8:$X, GPRC:$Y), (CMPULEi GPRC:$Y, immUExt8:$X)>;
+def : Pat<(setuge immUExt:$X, GPRC:$Y), (CMPULEi GPRC:$Y, immUExt:$X)>;
 
 def : Pat<(setgt GPRC:$X, GPRC:$Y), (CMPLT GPRC:$Y, GPRC:$X)>;
-def : Pat<(setgt immUExt8:$X, GPRC:$Y), (CMPLTi GPRC:$Y, immUExt8:$X)>;
+def : Pat<(setgt immUExt:$X, GPRC:$Y), (CMPLTi GPRC:$Y, immUExt:$X)>;
 
 def : Pat<(setge GPRC:$X, GPRC:$Y), (CMPLE GPRC:$Y, GPRC:$X)>;
-def : Pat<(setge immUExt8:$X, GPRC:$Y), (CMPLEi GPRC:$Y, immUExt8:$X)>;
+def : Pat<(setge immUExt:$X, GPRC:$Y), (CMPLEi GPRC:$Y, immUExt:$X)>;
 
 def : Pat<(setne GPRC:$X, GPRC:$Y), (CMPEQi (CMPEQ GPRC:$X, GPRC:$Y), 0)>;
-def : Pat<(setne GPRC:$X, immUExt8:$Y), (CMPEQi (CMPEQi GPRC:$X, immUExt8:$Y), 0)>;
+def : Pat<(setne GPRC:$X, immUExt:$Y), (CMPEQi (CMPEQi GPRC:$X, immUExt:$Y), 0)>;
 
 def : Pat<(setune GPRC:$X, GPRC:$Y), (CMPEQi (CMPEQ GPRC:$X, GPRC:$Y), 0)>;
-def : Pat<(setune GPRC:$X, immUExt8:$Y), (CMPEQi (CMPEQ GPRC:$X, immUExt8:$Y), 0)>;
+def : Pat<(setune GPRC:$X, immUExt:$Y), (CMPEQi (CMPEQ GPRC:$X, immUExt:$Y), 0)>;
 
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1, Ra = 31, Rb = 26, disp = 1, Uses = [R26] in {
@@ -415,10 +373,10 @@ let isCall = 1, Ra = 23, Rb = 27, disp = 0,
   def JSRs : MbrForm< 0x1A, 0x01, (ins), "jsr $$23,($$27),0", s_jsr>; //Jump to div or rem
 
 
-def JSR_COROUTINE : MbrForm< 0x1A, 0x03, (ins GPRC:$RD, GPRC:$RS, s14imm:$DISP), "jsr_coroutine $RD,($RS),$DISP", s_jsr>; //Jump to subroutine return
+def JSR_COROUTINE : MbrForm< 0x1A, 0x03, (ins GPRC:$RD, GPRC:$RS, s16imm:$DISP), "jsr_coroutine $RD,($RS),$DISP", s_jsr>; //Jump to subroutine return
 
 
-let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s32imm:$DISP, GPRC:$RB) in {
 def LDQ   : MForm<0x29, 1, "ldq $RA,$DISP($RB)",
                  [(set GPRC:$RA, (load (add GPRC:$RB, immSExt16:$DISP)))], s_ild>;
 def LDQr  : MForm<0x29, 1, "ldq $RA,$DISP($RB)\t\t!gprellow",
@@ -438,7 +396,7 @@ def LDWUr : MForm<0x0C, 1, "ldwu $RA,$DISP($RB)\t\t!gprellow",
 }
 
 
-let OutOperandList = (outs), InOperandList = (ins GPRC:$RA, s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs), InOperandList = (ins GPRC:$RA, s32imm:$DISP, GPRC:$RB) in {
 def STB   : MForm<0x0E, 0, "stb $RA,$DISP($RB)",
                  [(truncstorei8 GPRC:$RA, (add GPRC:$RB, immSExt16:$DISP))], s_ist>;
 def STBr  : MForm<0x0E, 0, "stb $RA,$DISP($RB)\t\t!gprellow",
@@ -458,7 +416,7 @@ def STQr  : MForm<0x2D, 0, "stq $RA,$DISP($RB)\t\t!gprellow",
 }
 
 //Load address
-let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s32imm:$DISP, GPRC:$RB) in {
 def LDA   : MForm<0x08, 0, "lda $RA,$DISP($RB)",
                  [(set GPRC:$RA, (add GPRC:$RB, immSExt16:$DISP))], s_lda>;
 def LDAr  : MForm<0x08, 0, "lda $RA,$DISP($RB)\t\t!gprellow",
@@ -469,25 +427,25 @@ def LDAHr : MForm<0x09, 0, "ldah $RA,$DISP($RB)\t\t!gprelhigh",
                  [(set GPRC:$RA, (Mapip_gprelhi tglobaladdr:$DISP, GPRC:$RB))], s_lda>;  //Load address high
 }
 
-let OutOperandList = (outs), InOperandList = (ins F4RC:$RA, s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs), InOperandList = (ins F8RC:$RA, s32imm:$DISP, GPRC:$RB) in {
 def STS  : MForm<0x26, 0, "sts $RA,$DISP($RB)",
-                [(store F4RC:$RA, (add GPRC:$RB, immSExt16:$DISP))], s_fst>;
+                [(store F8RC:$RA, (add GPRC:$RB, immSExt16:$DISP))], s_fst>;
 def STSr : MForm<0x26, 0, "sts $RA,$DISP($RB)\t\t!gprellow",
-                [(store F4RC:$RA, (Mapip_gprello tglobaladdr:$DISP, GPRC:$RB))], s_fst>;
+                [(store F8RC:$RA, (Mapip_gprello tglobaladdr:$DISP, GPRC:$RB))], s_fst>;
 }
-let OutOperandList = (outs F4RC:$RA), InOperandList = (ins s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs F8RC:$RA), InOperandList = (ins s32imm:$DISP, GPRC:$RB) in {
 def LDS  : MForm<0x22, 1, "lds $RA,$DISP($RB)",
-                [(set F4RC:$RA, (load (add GPRC:$RB, immSExt16:$DISP)))], s_fld>;
+                [(set F8RC:$RA, (load (add GPRC:$RB, immSExt16:$DISP)))], s_fld>;
 def LDSr : MForm<0x22, 1, "lds $RA,$DISP($RB)\t\t!gprellow",
-                [(set F4RC:$RA, (load (Mapip_gprello tglobaladdr:$DISP, GPRC:$RB)))], s_fld>;
+                [(set F8RC:$RA, (load (Mapip_gprello tglobaladdr:$DISP, GPRC:$RB)))], s_fld>;
 }
-let OutOperandList = (outs), InOperandList = (ins F8RC:$RA, s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs), InOperandList = (ins F8RC:$RA, s32imm:$DISP, GPRC:$RB) in {
 def STT  : MForm<0x27, 0, "stt $RA,$DISP($RB)",
                  [(store F8RC:$RA, (add GPRC:$RB, immSExt16:$DISP))], s_fst>;
 def STTr : MForm<0x27, 0, "stt $RA,$DISP($RB)\t\t!gprellow",
                  [(store F8RC:$RA, (Mapip_gprello tglobaladdr:$DISP, GPRC:$RB))], s_fst>;
 }
-let OutOperandList = (outs F8RC:$RA), InOperandList = (ins s64imm:$DISP, GPRC:$RB) in {
+let OutOperandList = (outs F8RC:$RA), InOperandList = (ins s32imm:$DISP, GPRC:$RB) in {
 def LDT  : MForm<0x23, 1, "ldt $RA,$DISP($RB)",
                 [(set F8RC:$RA, (load (add GPRC:$RB, immSExt16:$DISP)))], s_fld>;
 def LDTr : MForm<0x23, 1, "ldt $RA,$DISP($RB)\t\t!gprellow",
@@ -496,64 +454,60 @@ def LDTr : MForm<0x23, 1, "ldt $RA,$DISP($RB)\t\t!gprellow",
 
 
 //constpool rels
-def : Pat<(i64 (load (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
+def : Pat<(i32 (load (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
           (LDQr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (sextloadi32 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
+def : Pat<(i32 (sextloadi32 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
           (LDLr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (zextloadi8 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
+def : Pat<(i32 (zextloadi8 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
           (LDBUr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (zextloadi16 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
+def : Pat<(i32 (zextloadi16 (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
           (LDWUr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (Mapip_gprello tconstpool:$DISP, GPRC:$RB)),
+def : Pat<(i32 (Mapip_gprello tconstpool:$DISP, GPRC:$RB)),
           (LDAr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (Mapip_gprelhi tconstpool:$DISP, GPRC:$RB)),
+def : Pat<(i32 (Mapip_gprelhi tconstpool:$DISP, GPRC:$RB)),
           (LDAHr tconstpool:$DISP, GPRC:$RB)>;
-def : Pat<(f32 (load (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
-          (LDSr tconstpool:$DISP, GPRC:$RB)>;
 def : Pat<(f64 (load (Mapip_gprello tconstpool:$DISP, GPRC:$RB))),
           (LDTr tconstpool:$DISP, GPRC:$RB)>;
 
 //jumptable rels
-def : Pat<(i64 (Mapip_gprelhi tjumptable:$DISP, GPRC:$RB)),
+def : Pat<(i32 (Mapip_gprelhi tjumptable:$DISP, GPRC:$RB)),
           (LDAHr tjumptable:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (Mapip_gprello tjumptable:$DISP, GPRC:$RB)),
+def : Pat<(i32 (Mapip_gprello tjumptable:$DISP, GPRC:$RB)),
           (LDAr tjumptable:$DISP, GPRC:$RB)>;
 
 
 //misc ext patterns
-def : Pat<(i64 (extloadi8 (add GPRC:$RB, immSExt16:$DISP))),
+def : Pat<(i32 (extloadi8 (add GPRC:$RB, immSExt16:$DISP))),
           (LDBU   immSExt16:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (extloadi16 (add GPRC:$RB, immSExt16:$DISP))),
+def : Pat<(i32 (extloadi16 (add GPRC:$RB, immSExt16:$DISP))),
           (LDWU  immSExt16:$DISP, GPRC:$RB)>;
-def : Pat<(i64 (extloadi32 (add GPRC:$RB, immSExt16:$DISP))),
+def : Pat<(i32 (extloadi32 (add GPRC:$RB, immSExt16:$DISP))),
           (LDL   immSExt16:$DISP, GPRC:$RB)>;
 
 //0 disp patterns
-def : Pat<(i64 (load GPRC:$addr)),
+def : Pat<(i32 (load GPRC:$addr)),
           (LDQ  0, GPRC:$addr)>;
 def : Pat<(f64 (load GPRC:$addr)),
           (LDT  0, GPRC:$addr)>;
-def : Pat<(f32 (load GPRC:$addr)),
-          (LDS  0, GPRC:$addr)>;
-def : Pat<(i64 (sextloadi32 GPRC:$addr)),
+def : Pat<(i32 (sextloadi32 GPRC:$addr)),
           (LDL  0, GPRC:$addr)>;
-def : Pat<(i64 (zextloadi16 GPRC:$addr)),
+def : Pat<(i32 (zextloadi16 GPRC:$addr)),
           (LDWU 0, GPRC:$addr)>;
-def : Pat<(i64 (zextloadi8 GPRC:$addr)),
+def : Pat<(i32 (zextloadi8 GPRC:$addr)),
           (LDBU 0, GPRC:$addr)>;
-def : Pat<(i64 (extloadi8 GPRC:$addr)),
+def : Pat<(i32 (extloadi8 GPRC:$addr)),
           (LDBU 0, GPRC:$addr)>;
-def : Pat<(i64 (extloadi16 GPRC:$addr)),
+def : Pat<(i32 (extloadi16 GPRC:$addr)),
           (LDWU 0, GPRC:$addr)>;
-def : Pat<(i64 (extloadi32 GPRC:$addr)),
+def : Pat<(i32 (extloadi32 GPRC:$addr)),
           (LDL  0, GPRC:$addr)>;
 
 def : Pat<(store GPRC:$DATA, GPRC:$addr),
           (STQ  GPRC:$DATA, 0, GPRC:$addr)>;
 def : Pat<(store F8RC:$DATA, GPRC:$addr),
           (STT  F8RC:$DATA, 0, GPRC:$addr)>;
-def : Pat<(store F4RC:$DATA, GPRC:$addr),
-          (STS  F4RC:$DATA, 0, GPRC:$addr)>;
+def : Pat<(store F8RC:$DATA, GPRC:$addr),
+          (STS  F8RC:$DATA, 0, GPRC:$addr)>;
 def : Pat<(truncstorei32 GPRC:$DATA, GPRC:$addr),
           (STL  GPRC:$DATA, 0, GPRC:$addr)>;
 def : Pat<(truncstorei16 GPRC:$DATA, GPRC:$addr),
@@ -571,21 +525,21 @@ def LDAHg : MForm<0x09, 1, "ldah $RA,0($RB)\t\t!gpdisp!$NUM", [], s_lda>;  //Loa
 }
 
 //Load quad, rellocated literal form
-let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s64imm:$DISP, GPRC:$RB) in
+let OutOperandList = (outs GPRC:$RA), InOperandList = (ins s32imm:$DISP, GPRC:$RB) in
 def LDQl : MForm<0x29, 1, "ldq $RA,$DISP($RB)\t\t!literal",
                  [(set GPRC:$RA, (Mapip_rellit tglobaladdr:$DISP, GPRC:$RB))], s_ild>;
 def : Pat<(Mapip_rellit texternalsym:$ext, GPRC:$RB),
           (LDQl texternalsym:$ext, GPRC:$RB)>;
 
 let OutOperandList = (outs GPRC:$RR),
-    InOperandList = (ins GPRC:$RA, s64imm:$DISP, GPRC:$RB),
+    InOperandList = (ins GPRC:$RA, s32imm:$DISP, GPRC:$RB),
     Constraints = "$RA = $RR",
     DisableEncoding = "$RR" in {
 def STQ_C : MForm<0x2F, 0, "stq_l $RA,$DISP($RB)", [], s_ist>;
 def STL_C : MForm<0x2E, 0, "stl_l $RA,$DISP($RB)", [], s_ist>;
 }
 let OutOperandList = (outs GPRC:$RA),
-    InOperandList = (ins s64imm:$DISP, GPRC:$RB),
+    InOperandList = (ins s32imm:$DISP, GPRC:$RB),
     mayLoad = 1 in {
 def LDQ_L : MForm<0x2B, 1, "ldq_l $RA,$DISP($RB)", [], s_ild>;
 def LDL_L : MForm<0x2A, 1, "ldl_l $RA,$DISP($RB)", [], s_ild>;
@@ -595,9 +549,9 @@ def RPCC : MfcForm<0x18, 0xC000, "rpcc $RA", s_rpcc>; //Read process cycle count
 def MB  : MfcPForm<0x18, 0x4000, "mb",  s_imisc>; //memory barrier
 def WMB : MfcPForm<0x18, 0x4400, "wmb", s_imisc>; //write memory barrier
 
-def : Pat<(membarrier (i64 imm), (i64 imm), (i64 imm), (i64 1), (i64 imm)),
+def : Pat<(membarrier (i32 imm), (i32 imm), (i32 imm), (i32 1), (i32 imm)),
           (WMB)>;
-def : Pat<(membarrier (i64 imm), (i64 imm), (i64 imm), (i64 imm), (i64 imm)),
+def : Pat<(membarrier (i32 imm), (i32 imm), (i32 imm), (i32 imm), (i32 imm)),
           (MB)>;
 
 def : Pat<(atomic_fence (imm), (imm)), (MB)>;
@@ -606,25 +560,25 @@ def : Pat<(atomic_fence (imm), (imm)), (MB)>;
 
 //Floats
 
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins F4RC:$RB), Fa = 31 in
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def SQRTS : FPForm<0x14, 0x58B, "sqrts/su $RB,$RC",
-                   [(set F4RC:$RC, (fsqrt F4RC:$RB))], s_fsqrts>;
+                   [(set F8RC:$RC, (fsqrt F8RC:$RB))], s_fsqrts>;
 
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins F4RC:$RA, F4RC:$RB) in {
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RA, F8RC:$RB) in {
 def ADDS  : FPForm<0x16, 0x580, "adds/su $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fadd F4RC:$RA, F4RC:$RB))], s_fadd>;
+                   [(set F8RC:$RC, (fadd F8RC:$RA, F8RC:$RB))], s_fadd>;
 def SUBS  : FPForm<0x16, 0x581, "subs/su $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fsub F4RC:$RA, F4RC:$RB))], s_fadd>;
+                   [(set F8RC:$RC, (fsub F8RC:$RA, F8RC:$RB))], s_fadd>;
 def DIVS  : FPForm<0x16, 0x583, "divs/su $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fdiv F4RC:$RA, F4RC:$RB))], s_fdivs>;
+                   [(set F8RC:$RC, (fdiv F8RC:$RA, F8RC:$RB))], s_fdivs>;
 def MULS  : FPForm<0x16, 0x582, "muls/su $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fmul F4RC:$RA, F4RC:$RB))], s_fmul>;
+                   [(set F8RC:$RC, (fmul F8RC:$RA, F8RC:$RB))], s_fmul>;
 
 def CPYSS  : FPForm<0x17, 0x020, "cpys $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fcopysign F4RC:$RB, F4RC:$RA))], s_fadd>;
+                   [(set F8RC:$RC, (fcopysign F8RC:$RB, F8RC:$RA))], s_fadd>;
 def CPYSES : FPForm<0x17, 0x022, "cpyse $RA,$RB,$RC",[], s_fadd>; //Copy sign and exponent
 def CPYSNS : FPForm<0x17, 0x021, "cpysn $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fneg (fcopysign F4RC:$RB, F4RC:$RA)))], s_fadd>;
+                   [(set F8RC:$RC, (fneg (fcopysign F8RC:$RB, F8RC:$RA)))], s_fadd>;
 }
 
 //Doubles
@@ -660,23 +614,23 @@ def CMPTUN : FPForm<0x16, 0x5A4, "cmptun/su $RA,$RB,$RC", [], s_fadd>;
 }
 
 //More CPYS forms:
-let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F4RC:$RA, F8RC:$RB) in {
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RA, F8RC:$RB) in {
 def CPYSTs  : FPForm<0x17, 0x020, "cpys $RA,$RB,$RC",
-                   [(set F8RC:$RC, (fcopysign F8RC:$RB, F4RC:$RA))], s_fadd>;
+                   [(set F8RC:$RC, (fcopysign F8RC:$RB, F8RC:$RA))], s_fadd>;
 def CPYSNTs : FPForm<0x17, 0x021, "cpysn $RA,$RB,$RC",
-                   [(set F8RC:$RC, (fneg (fcopysign F8RC:$RB, F4RC:$RA)))], s_fadd>;
+                   [(set F8RC:$RC, (fneg (fcopysign F8RC:$RB, F8RC:$RA)))], s_fadd>;
 }
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins F8RC:$RA, F4RC:$RB) in {
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RA, F8RC:$RB) in {
 def CPYSSt  : FPForm<0x17, 0x020, "cpys $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fcopysign F4RC:$RB, F8RC:$RA))], s_fadd>;
+                   [(set F8RC:$RC, (fcopysign F8RC:$RB, F8RC:$RA))], s_fadd>;
 def CPYSESt : FPForm<0x17, 0x022, "cpyse $RA,$RB,$RC",[], s_fadd>; //Copy sign and exponent
 def CPYSNSt : FPForm<0x17, 0x021, "cpysn $RA,$RB,$RC",
-                   [(set F4RC:$RC, (fneg (fcopysign F4RC:$RB, F8RC:$RA)))], s_fadd>;
+                   [(set F8RC:$RC, (fneg (fcopysign F8RC:$RB, F8RC:$RA)))], s_fadd>;
 }
 
 //conditional moves, floats
-let OutOperandList = (outs F4RC:$RDEST),
-    InOperandList = (ins F4RC:$RFALSE, F4RC:$RTRUE, F8RC:$RCOND),
+let OutOperandList = (outs F8RC:$RDEST),
+    InOperandList = (ins F8RC:$RFALSE, F8RC:$RTRUE, F8RC:$RCOND),
     Constraints = "$RTRUE = $RDEST" in {
 def FCMOVEQS : FPForm<0x17, 0x02A,
                       "fcmoveq $RCOND,$RTRUE,$RDEST",
@@ -755,103 +709,101 @@ def : Pat<(select (setule F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
       (FCMOVNET F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
 
 //Select single
-def : Pat<(select (seteq F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setoeq F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setueq F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (seteq F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setoeq F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setueq F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
 
-def : Pat<(select (setne F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVEQS F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setone F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVEQS F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setune F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVEQS F4RC:$sf, F4RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setne F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVEQS F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setone F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVEQS F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setune F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVEQS F8RC:$sf, F8RC:$st, (CMPTEQ F8RC:$RA, F8RC:$RB))>;
 
-def : Pat<(select (setgt F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
-def : Pat<(select (setogt F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
-def : Pat<(select (setugt F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setgt F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setogt F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setugt F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RB, F8RC:$RA))>;
 
-def : Pat<(select (setge F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
-def : Pat<(select (setoge F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
-def : Pat<(select (setuge F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setge F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setoge F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
+def : Pat<(select (setuge F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RB, F8RC:$RA))>;
 
-def : Pat<(select (setlt F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setolt F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setult F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setlt F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setolt F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setult F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLT F8RC:$RA, F8RC:$RB))>;
 
-def : Pat<(select (setle F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setole F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
-def : Pat<(select (setule F8RC:$RA, F8RC:$RB), F4RC:$st, F4RC:$sf),
-      (FCMOVNES F4RC:$sf, F4RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setle F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setole F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
+def : Pat<(select (setule F8RC:$RA, F8RC:$RB), F8RC:$st, F8RC:$sf),
+      (FCMOVNES F8RC:$sf, F8RC:$st, (CMPTLE F8RC:$RA, F8RC:$RB))>;
 
 
 
-let OutOperandList = (outs GPRC:$RC), InOperandList = (ins F4RC:$RA), Fb = 31 in
+let OutOperandList = (outs GPRC:$RC), InOperandList = (ins F8RC:$RA), Fb = 31 in
 def FTOIS : FPForm<0x1C, 0x078, "ftois $RA,$RC",
-        [(set GPRC:$RC, (bitconvert F4RC:$RA))], s_ftoi>; //Floating to integer move, S_floating
+        [(set GPRC:$RC, (bitconvert F8RC:$RA))], s_ftoi>; //Floating to integer move, S_floating
 let OutOperandList = (outs GPRC:$RC), InOperandList = (ins F8RC:$RA), Fb = 31 in
 def FTOIT : FPForm<0x1C, 0x070, "ftoit $RA,$RC",
         [(set GPRC:$RC, (bitconvert F8RC:$RA))], s_ftoi>; //Floating to integer move
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins GPRC:$RA), Fb = 31 in
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins GPRC:$RA), Fb = 31 in
 def ITOFS : FPForm<0x14, 0x004, "itofs $RA,$RC",
-    	[(set F4RC:$RC, (bitconvert GPRC:$RA))], s_itof>; //Integer to floating move, S_floating
+    	[(set F8RC:$RC, (bitconvert GPRC:$RA))], s_itof>; //Integer to floating move, S_floating
 let OutOperandList = (outs F8RC:$RC), InOperandList = (ins GPRC:$RA), Fb = 31 in
 def ITOFT : FPForm<0x14, 0x024, "itoft $RA,$RC",
         [(set F8RC:$RC, (bitconvert GPRC:$RA))], s_itof>; //Integer to floating move
 
 
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def CVTQS : FPForm<0x16, 0x7BC, "cvtqs/sui $RB,$RC",
-        [(set F4RC:$RC, (Mapip_cvtqs F8RC:$RB))], s_fadd>;
+        [(set F8RC:$RC, (Mapip_cvtqs F8RC:$RB))], s_fadd>;
 let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def CVTQT : FPForm<0x16, 0x7BE, "cvtqt/sui $RB,$RC",
         [(set F8RC:$RC, (Mapip_cvtqt F8RC:$RB))], s_fadd>;
 let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def CVTTQ : FPForm<0x16, 0x52F, "cvttq/svc $RB,$RC",
         [(set F8RC:$RC, (Mapip_cvttq F8RC:$RB))], s_fadd>;
-let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F4RC:$RB), Fa = 31 in
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def CVTST : FPForm<0x16, 0x6AC, "cvtst/s $RB,$RC",
-                   [(set F8RC:$RC, (fextend F4RC:$RB))], s_fadd>;
-let OutOperandList = (outs F4RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
+                   [(set F8RC:$RC, F8RC:$RB)], s_fadd>;
+let OutOperandList = (outs F8RC:$RC), InOperandList = (ins F8RC:$RB), Fa = 31 in
 def CVTTS : FPForm<0x16, 0x7AC, "cvtts/sui $RB,$RC",
-                   [(set F4RC:$RC, (fround F8RC:$RB))], s_fadd>;
+                   [(set F8RC:$RC, F8RC:$RB)], s_fadd>;
 
 def :  Pat<(select GPRC:$RC, F8RC:$st, F8RC:$sf),
        (f64 (FCMOVEQT  F8RC:$st, F8RC:$sf, (ITOFT GPRC:$RC)))>;
-def :  Pat<(select GPRC:$RC, F4RC:$st, F4RC:$sf),
-       (f32 (FCMOVEQS  F4RC:$st, F4RC:$sf, (ITOFT GPRC:$RC)))>;
 
 /////////////////////////////////////////////////////////
 //Branching
 /////////////////////////////////////////////////////////
 class br_icc<bits<6> opc, string asmstr>
-  : BFormN<opc, (ins u64imm:$opc, GPRC:$R, target:$dst),
+  : BFormN<opc, (ins u32imm:$opc, GPRC:$R, target:$dst),
     !strconcat(asmstr, " $R,$dst"),  s_icbr>;
 class br_fcc<bits<6> opc, string asmstr>
-  : BFormN<opc, (ins u64imm:$opc, F8RC:$R, target:$dst),
+  : BFormN<opc, (ins u32imm:$opc, F8RC:$R, target:$dst),
     !strconcat(asmstr, " $R,$dst"),  s_fbr>;
 
 let isBranch = 1, isTerminator = 1, hasCtrlDep = 1 in {
 let Ra = 31, isBarrier = 1 in
 def BR : BFormD<0x30, "br $$31,$DISP", [(br bb:$DISP)], s_ubr>;
 
-def COND_BRANCH_I : BFormN<0, (ins u64imm:$opc, GPRC:$R, target:$dst),
+def COND_BRANCH_I : BFormN<0, (ins u32imm:$opc, GPRC:$R, target:$dst),
                     "{:comment} COND_BRANCH imm:$opc, GPRC:$R, bb:$dst",
                     s_icbr>;
-def COND_BRANCH_F : BFormN<0, (ins u64imm:$opc, F8RC:$R, target:$dst),
+def COND_BRANCH_F : BFormN<0, (ins u32imm:$opc, F8RC:$R, target:$dst),
                     "{:comment} COND_BRANCH imm:$opc, F8RC:$R, bb:$dst",
                     s_fbr>;
 //Branches, int
@@ -877,20 +829,20 @@ def FBNE : br_fcc<0x36, "fbne">;
 def immBRCond : SDNodeXForm<imm, [{
   switch((uint64_t)N->getZExtValue()) {
     default: assert(0 && "Unknown branch type");
-    case 0:  return getI64Imm(Mapip::BEQ);
-    case 1:  return getI64Imm(Mapip::BNE);
-    case 2:  return getI64Imm(Mapip::BGE);
-    case 3:  return getI64Imm(Mapip::BGT);
-    case 4:  return getI64Imm(Mapip::BLE);
-    case 5:  return getI64Imm(Mapip::BLT);
-    case 6:  return getI64Imm(Mapip::BLBS);
-    case 7:  return getI64Imm(Mapip::BLBC);
-    case 20: return getI64Imm(Mapip::FBEQ);
-    case 21: return getI64Imm(Mapip::FBNE);
-    case 22: return getI64Imm(Mapip::FBGE);
-    case 23: return getI64Imm(Mapip::FBGT);
-    case 24: return getI64Imm(Mapip::FBLE);
-    case 25: return getI64Imm(Mapip::FBLT);
+    case 0:  return getI32Imm(Mapip::BEQ);
+    case 1:  return getI32Imm(Mapip::BNE);
+    case 2:  return getI32Imm(Mapip::BGE);
+    case 3:  return getI32Imm(Mapip::BGT);
+    case 4:  return getI32Imm(Mapip::BLE);
+    case 5:  return getI32Imm(Mapip::BLT);
+    case 6:  return getI32Imm(Mapip::BLBS);
+    case 7:  return getI32Imm(Mapip::BLBC);
+    case 20: return getI32Imm(Mapip::FBEQ);
+    case 21: return getI32Imm(Mapip::FBNE);
+    case 22: return getI32Imm(Mapip::FBGE);
+    case 23: return getI32Imm(Mapip::FBGT);
+    case 24: return getI32Imm(Mapip::FBLE);
+    case 25: return getI32Imm(Mapip::FBLT);
   }
 }]>;
 
@@ -914,8 +866,8 @@ def : Pat<(brcond GPRC:$RA, bb:$DISP),
       (COND_BRANCH_I (immBRCond 1), GPRC:$RA, bb:$DISP)>;
 def : Pat<(brcond (setne GPRC:$RA, GPRC:$RB), bb:$DISP),
       (COND_BRANCH_I (immBRCond 0), (CMPEQ GPRC:$RA, GPRC:$RB), bb:$DISP)>;
-def : Pat<(brcond (setne GPRC:$RA, immUExt8:$L), bb:$DISP),
-      (COND_BRANCH_I (immBRCond 0), (CMPEQi GPRC:$RA, immUExt8:$L), bb:$DISP)>;
+def : Pat<(brcond (setne GPRC:$RA, immUExt:$L), bb:$DISP),
+      (COND_BRANCH_I (immBRCond 0), (CMPEQi GPRC:$RA, immUExt:$L), bb:$DISP)>;
 
 //FP cond patterns
 def : Pat<(brcond (seteq F8RC:$RA, immFPZ), bb:$DISP),
@@ -1045,32 +997,6 @@ def : Pat<(brcond (setune F8RC:$RA, immFPZ), bb:$DISP),
 
 //Constant handling
 
-def immConst2Part  : PatLeaf<(imm), [{
-  //true if imm fits in a LDAH LDA pair
-  int64_t val = (int64_t)N->getZExtValue();
-  return (val <= IMM_FULLHIGH  && val >= IMM_FULLLOW);
-}]>;
-def immConst2PartInt  : PatLeaf<(imm), [{
-  //true if imm fits in a LDAH LDA pair with zeroext
-  uint64_t uval = N->getZExtValue();
-  int32_t val32 = (int32_t)uval;
-  return ((uval >> 32) == 0 && //empty upper bits
-          val32 <= IMM_FULLHIGH);
-//          val32 >= IMM_FULLLOW  + IMM_LOW  * IMM_MULT); //Always True
-}], SExt32>;
-
-def : Pat<(i64 immConst2Part:$imm),
-          (LDA (LL16 immConst2Part:$imm), (LDAH (LH16 immConst2Part:$imm), R31))>;
-
-def : Pat<(i64 immSExt16:$imm),
-          (LDA immSExt16:$imm, R31)>;
-
-def : Pat<(i64 immSExt16int:$imm),
-          (ZAPNOTi (LDA (SExt16 immSExt16int:$imm), R31), 15)>;
-def : Pat<(i64 immConst2PartInt:$imm),
-          (ZAPNOTi (LDA (LL16 (i64 (SExt32 immConst2PartInt:$imm))),
-                        (LDAH (LH16 (i64 (SExt32 immConst2PartInt:$imm))), R31)), 15)>;
-
 
 //TODO: I want to just define these like this!
 //def : Pat<(i64 0),
@@ -1086,23 +1012,20 @@ def : Pat<(i64 immConst2PartInt:$imm),
 
 //Misc Patterns:
 
-def : Pat<(sext_inreg GPRC:$RB, i32),
-          (ADDLi GPRC:$RB, 0)>;
-
 def : Pat<(fabs F8RC:$RB),
           (CPYST F31, F8RC:$RB)>;
-def : Pat<(fabs F4RC:$RB),
-          (CPYSS F31, F4RC:$RB)>;
+def : Pat<(fabs F8RC:$RB),
+          (CPYSS F31, F8RC:$RB)>;
 def : Pat<(fneg F8RC:$RB),
           (CPYSNT F8RC:$RB, F8RC:$RB)>;
-def : Pat<(fneg F4RC:$RB),
-          (CPYSNS F4RC:$RB, F4RC:$RB)>;
+def : Pat<(fneg F8RC:$RB),
+          (CPYSNS F8RC:$RB, F8RC:$RB)>;
 
-def : Pat<(fcopysign F4RC:$A, (fneg F4RC:$B)),
-          (CPYSNS F4RC:$B, F4RC:$A)>;
+def : Pat<(fcopysign F8RC:$A, (fneg F8RC:$B)),
+          (CPYSNS F8RC:$B, F8RC:$A)>;
 def : Pat<(fcopysign F8RC:$A, (fneg F8RC:$B)),
           (CPYSNT F8RC:$B, F8RC:$A)>;
-def : Pat<(fcopysign F4RC:$A, (fneg F8RC:$B)),
-          (CPYSNSt F8RC:$B, F4RC:$A)>;
-def : Pat<(fcopysign F8RC:$A, (fneg F4RC:$B)),
-          (CPYSNTs F4RC:$B, F8RC:$A)>;
+def : Pat<(fcopysign F8RC:$A, (fneg F8RC:$B)),
+          (CPYSNSt F8RC:$B, F8RC:$A)>;
+def : Pat<(fcopysign F8RC:$A, (fneg F8RC:$B)),
+          (CPYSNTs F8RC:$B, F8RC:$A)>;

@@ -51,15 +51,14 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
   setBooleanContents(ZeroOrOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent); // FIXME: Is this correct?
 
-  addRegisterClass(MVT::i64, Mapip::GPRCRegisterClass);
+  addRegisterClass(MVT::i32, Mapip::GPRCRegisterClass);
   addRegisterClass(MVT::f64, Mapip::F8RCRegisterClass);
-  addRegisterClass(MVT::f32, Mapip::F4RCRegisterClass);
 
   // We want to custom lower some of our intrinsics.
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
   setLoadExtAction(ISD::EXTLOAD, MVT::i1,  Promote);
-  setLoadExtAction(ISD::EXTLOAD, MVT::f32, Expand);
+  setLoadExtAction(ISD::EXTLOAD, MVT::f64, Expand);
 
   setLoadExtAction(ISD::ZEXTLOAD, MVT::i1,  Promote);
   setLoadExtAction(ISD::ZEXTLOAD, MVT::i32, Expand);
@@ -68,8 +67,6 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
   setLoadExtAction(ISD::SEXTLOAD, MVT::i8,  Expand);
   setLoadExtAction(ISD::SEXTLOAD, MVT::i16, Expand);
 
-  setTruncStoreAction(MVT::f64, MVT::f32, Expand);
-
   //  setOperationAction(ISD::BRIND,        MVT::Other,   Expand);
   setOperationAction(ISD::BR_JT,        MVT::Other, Expand);
   setOperationAction(ISD::BR_CC,        MVT::Other, Expand);
@@ -77,39 +74,35 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
 
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
 
-  setOperationAction(ISD::FREM, MVT::f32, Expand);
   setOperationAction(ISD::FREM, MVT::f64, Expand);
 
-  setOperationAction(ISD::UINT_TO_FP, MVT::i64, Expand);
-  setOperationAction(ISD::SINT_TO_FP, MVT::i64, Custom);
-  setOperationAction(ISD::FP_TO_UINT, MVT::i64, Expand);
-  setOperationAction(ISD::FP_TO_SINT, MVT::i64, Custom);
+  setOperationAction(ISD::UINT_TO_FP, MVT::i32, Expand);
+  setOperationAction(ISD::SINT_TO_FP, MVT::i32, Custom);
+  setOperationAction(ISD::FP_TO_UINT, MVT::i32, Expand);
+  setOperationAction(ISD::FP_TO_SINT, MVT::i32, Custom);
 
   if (!TM.getSubtarget<MapipSubtarget>().hasCT()) {
-    setOperationAction(ISD::CTPOP    , MVT::i64  , Expand);
-    setOperationAction(ISD::CTTZ     , MVT::i64  , Expand);
-    setOperationAction(ISD::CTLZ     , MVT::i64  , Expand);
+    setOperationAction(ISD::CTPOP    , MVT::i32  , Expand);
+    setOperationAction(ISD::CTTZ     , MVT::i32  , Expand);
+    setOperationAction(ISD::CTLZ     , MVT::i32  , Expand);
   }
-  setOperationAction(ISD::BSWAP    , MVT::i64, Expand);
-  setOperationAction(ISD::ROTL     , MVT::i64, Expand);
-  setOperationAction(ISD::ROTR     , MVT::i64, Expand);
+  setOperationAction(ISD::BSWAP    , MVT::i32, Expand);
+  setOperationAction(ISD::ROTL     , MVT::i32, Expand);
+  setOperationAction(ISD::ROTR     , MVT::i32, Expand);
 
-  setOperationAction(ISD::SREM     , MVT::i64, Custom);
-  setOperationAction(ISD::UREM     , MVT::i64, Custom);
-  setOperationAction(ISD::SDIV     , MVT::i64, Custom);
-  setOperationAction(ISD::UDIV     , MVT::i64, Custom);
+  setOperationAction(ISD::SREM     , MVT::i32, Custom);
+  setOperationAction(ISD::UREM     , MVT::i32, Custom);
+  setOperationAction(ISD::SDIV     , MVT::i32, Custom);
+  setOperationAction(ISD::UDIV     , MVT::i32, Custom);
 
-  setOperationAction(ISD::ADDC     , MVT::i64, Expand);
-  setOperationAction(ISD::ADDE     , MVT::i64, Expand);
-  setOperationAction(ISD::SUBC     , MVT::i64, Expand);
-  setOperationAction(ISD::SUBE     , MVT::i64, Expand);
+  setOperationAction(ISD::ADDC     , MVT::i32, Expand);
+  setOperationAction(ISD::ADDE     , MVT::i32, Expand);
+  setOperationAction(ISD::SUBC     , MVT::i32, Expand);
+  setOperationAction(ISD::SUBE     , MVT::i32, Expand);
 
-  setOperationAction(ISD::UMUL_LOHI, MVT::i64, Expand);
-  setOperationAction(ISD::SMUL_LOHI, MVT::i64, Expand);
-
-  setOperationAction(ISD::SRL_PARTS, MVT::i64, Custom);
-  setOperationAction(ISD::SRA_PARTS, MVT::i64, Expand);
-  setOperationAction(ISD::SHL_PARTS, MVT::i64, Expand);
+  setOperationAction(ISD::SRL_PARTS, MVT::i32, Custom);
+  setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
+  setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
 
   // We don't support sin/cos/sqrt/pow
   setOperationAction(ISD::FSIN , MVT::f64, Expand);
@@ -124,26 +117,25 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
   setOperationAction(ISD::FPOW , MVT::f64, Expand);
 
   setOperationAction(ISD::FMA, MVT::f64, Expand);
-  setOperationAction(ISD::FMA, MVT::f32, Expand);
 
-  setOperationAction(ISD::SETCC, MVT::f32, Promote);
+  setOperationAction(ISD::SETCC, MVT::f64, Promote);
 
-  setOperationAction(ISD::BITCAST, MVT::f32, Promote);
+  setOperationAction(ISD::BITCAST, MVT::f64, Promote);
 
   setOperationAction(ISD::EH_LABEL, MVT::Other, Expand);
 
   // Not implemented yet.
   setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
-  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Expand);
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
 
   // We want to legalize GlobalAddress and ConstantPool and
   // ExternalSymbols nodes into the appropriate instructions to
   // materialize the address.
-  setOperationAction(ISD::GlobalAddress,  MVT::i64, Custom);
-  setOperationAction(ISD::ConstantPool,   MVT::i64, Custom);
-  setOperationAction(ISD::ExternalSymbol, MVT::i64, Custom);
-  setOperationAction(ISD::GlobalTLSAddress, MVT::i64, Custom);
+  setOperationAction(ISD::GlobalAddress,  MVT::i32, Custom);
+  setOperationAction(ISD::ConstantPool,   MVT::i32, Custom);
+  setOperationAction(ISD::ExternalSymbol, MVT::i32, Custom);
+  setOperationAction(ISD::GlobalTLSAddress, MVT::i32, Custom);
 
   setOperationAction(ISD::VASTART, MVT::Other, Custom);
   setOperationAction(ISD::VAEND,   MVT::Other, Expand);
@@ -151,7 +143,6 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
   setOperationAction(ISD::VAARG,   MVT::Other, Custom);
   setOperationAction(ISD::VAARG,   MVT::i32,   Custom);
 
-  setOperationAction(ISD::JumpTable, MVT::i64, Custom);
   setOperationAction(ISD::JumpTable, MVT::i32, Custom);
 
   setOperationAction(ISD::ATOMIC_LOAD,  MVT::i32, Expand);
@@ -170,7 +161,7 @@ MapipTargetLowering::MapipTargetLowering(TargetMachine &TM)
 }
 
 EVT MapipTargetLowering::getSetCCResultType(EVT VT) const {
-  return MVT::i64;
+  return MVT::i32;
 }
 
 const char *MapipTargetLowering::getTargetNodeName(unsigned Opcode) const {
@@ -198,9 +189,9 @@ static SDValue LowerJumpTable(SDValue Op, SelectionDAG &DAG) {
   // FIXME there isn't really any debug info here
   DebugLoc dl = Op.getDebugLoc();
 
-  SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i64, JTI,
-                             DAG.getGLOBAL_OFFSET_TABLE(MVT::i64));
-  SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i64, JTI, Hi);
+  SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i32, JTI,
+                             DAG.getGLOBAL_OFFSET_TABLE(MVT::i32));
+  SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i32, JTI, Hi);
   return Lo;
 }
 
@@ -283,7 +274,7 @@ MapipTargetLowering::LowerCall(SDValue Chain, SDValue Callee,
       assert(VA.isMemLoc());
 
       if (StackPtr.getNode() == 0)
-        StackPtr = DAG.getCopyFromReg(Chain, dl, Mapip::R30, MVT::i64);
+        StackPtr = DAG.getCopyFromReg(Chain, dl, Mapip::R30, MVT::i32);
 
       SDValue PtrOff = DAG.getNode(ISD::ADD, dl, getPointerTy(),
                                    StackPtr,
@@ -418,15 +409,10 @@ MapipTargetLowering::LowerFormalArguments(SDValue Chain,
                                       &Mapip::F8RCRegClass);
         ArgVal = DAG.getCopyFromReg(Chain, dl, args_float[ArgNo], ObjectVT);
         break;
-      case MVT::f32:
-        args_float[ArgNo] = AddLiveIn(MF, args_float[ArgNo],
-                                      &Mapip::F4RCRegClass);
-        ArgVal = DAG.getCopyFromReg(Chain, dl, args_float[ArgNo], ObjectVT);
-        break;
-      case MVT::i64:
+      case MVT::i32:
         args_int[ArgNo] = AddLiveIn(MF, args_int[ArgNo],
                                     &Mapip::GPRCRegClass);
-        ArgVal = DAG.getCopyFromReg(Chain, dl, args_int[ArgNo], MVT::i64);
+        ArgVal = DAG.getCopyFromReg(Chain, dl, args_int[ArgNo], MVT::i32);
         break;
       }
     } else { //more args
@@ -435,7 +421,7 @@ MapipTargetLowering::LowerFormalArguments(SDValue Chain,
 
       // Create the SelectionDAG nodes corresponding to a load
       //from this parameter
-      SDValue FIN = DAG.getFrameIndex(FI, MVT::i64);
+      SDValue FIN = DAG.getFrameIndex(FI, MVT::i32);
       ArgVal = DAG.getLoad(ObjectVT, dl, Chain, FIN, MachinePointerInfo(),
                            false, false, 0);
     }
@@ -449,10 +435,10 @@ MapipTargetLowering::LowerFormalArguments(SDValue Chain,
     for (int i = 0; i < 6; ++i) {
       if (TargetRegisterInfo::isPhysicalRegister(args_int[i]))
         args_int[i] = AddLiveIn(MF, args_int[i], &Mapip::GPRCRegClass);
-      SDValue argt = DAG.getCopyFromReg(Chain, dl, args_int[i], MVT::i64);
+      SDValue argt = DAG.getCopyFromReg(Chain, dl, args_int[i], MVT::i32);
       int FI = MFI->CreateFixedObject(8, -8 * (6 - i), true);
       if (i == 0) FuncInfo->setVarArgsBase(FI);
-      SDValue SDFI = DAG.getFrameIndex(FI, MVT::i64);
+      SDValue SDFI = DAG.getFrameIndex(FI, MVT::i32);
       LS.push_back(DAG.getStore(Chain, dl, argt, SDFI, MachinePointerInfo(),
                                 false, false, 0));
 
@@ -460,7 +446,7 @@ MapipTargetLowering::LowerFormalArguments(SDValue Chain,
         args_float[i] = AddLiveIn(MF, args_float[i], &Mapip::F8RCRegClass);
       argt = DAG.getCopyFromReg(Chain, dl, args_float[i], MVT::f64);
       FI = MFI->CreateFixedObject(8, - 8 * (12 - i), true);
-      SDFI = DAG.getFrameIndex(FI, MVT::i64);
+      SDFI = DAG.getFrameIndex(FI, MVT::i32);
       LS.push_back(DAG.getStore(Chain, dl, argt, SDFI, MachinePointerInfo(),
                                 false, false, 0));
     }
@@ -481,7 +467,7 @@ MapipTargetLowering::LowerReturn(SDValue Chain,
 
   SDValue Copy = DAG.getCopyToReg(Chain, dl, Mapip::R26,
                                   DAG.getNode(MapipISD::GlobalRetAddr,
-                                              DebugLoc(), MVT::i64),
+                                              DebugLoc(), MVT::i32),
                                   SDValue());
   switch (Outs.size()) {
   default:
@@ -542,27 +528,27 @@ void MapipTargetLowering::LowerVAARG(SDNode *N, SDValue &Chain,
   const Value *VAListS = cast<SrcValueSDNode>(N->getOperand(2))->getValue();
   DebugLoc dl = N->getDebugLoc();
 
-  SDValue Base = DAG.getLoad(MVT::i64, dl, Chain, VAListP,
+  SDValue Base = DAG.getLoad(MVT::i32, dl, Chain, VAListP,
                              MachinePointerInfo(VAListS),
                              false, false, 0);
-  SDValue Tmp = DAG.getNode(ISD::ADD, dl, MVT::i64, VAListP,
-                              DAG.getConstant(8, MVT::i64));
-  SDValue Offset = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i64, Base.getValue(1),
+  SDValue Tmp = DAG.getNode(ISD::ADD, dl, MVT::i32, VAListP,
+                              DAG.getConstant(4, MVT::i32));
+  SDValue Offset = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i32, Base.getValue(1),
                                   Tmp, MachinePointerInfo(),
                                   MVT::i32, false, false, 0);
-  DataPtr = DAG.getNode(ISD::ADD, dl, MVT::i64, Base, Offset);
+  DataPtr = DAG.getNode(ISD::ADD, dl, MVT::i32, Base, Offset);
   if (N->getValueType(0).isFloatingPoint())
   {
-    //if fp && Offset < 6*8, then subtract 6*8 from DataPtr
-    SDValue FPDataPtr = DAG.getNode(ISD::SUB, dl, MVT::i64, DataPtr,
-                                      DAG.getConstant(8*6, MVT::i64));
-    SDValue CC = DAG.getSetCC(dl, MVT::i64, Offset,
-                                DAG.getConstant(8*6, MVT::i64), ISD::SETLT);
-    DataPtr = DAG.getNode(ISD::SELECT, dl, MVT::i64, CC, FPDataPtr, DataPtr);
+    //if fp && Offset < 6*4, then subtract 6*4 from DataPtr
+    SDValue FPDataPtr = DAG.getNode(ISD::SUB, dl, MVT::i32, DataPtr,
+                                      DAG.getConstant(4*6, MVT::i32));
+    SDValue CC = DAG.getSetCC(dl, MVT::i32, Offset,
+                                DAG.getConstant(4*6, MVT::i32), ISD::SETLT);
+    DataPtr = DAG.getNode(ISD::SELECT, dl, MVT::i32, CC, FPDataPtr, DataPtr);
   }
 
-  SDValue NewOffset = DAG.getNode(ISD::ADD, dl, MVT::i64, Offset,
-                                    DAG.getConstant(8, MVT::i64));
+  SDValue NewOffset = DAG.getNode(ISD::ADD, dl, MVT::i32, Offset,
+                                    DAG.getConstant(4, MVT::i32));
   Chain = DAG.getTruncStore(Offset.getValue(1), dl, NewOffset, Tmp,
                             MachinePointerInfo(),
                             MVT::i32, false, false, 0);
@@ -582,7 +568,7 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
     switch (IntNo) {
     default: break;    // Don't custom lower most intrinsics.
     case Intrinsic::alpha_umulh:
-      return DAG.getNode(ISD::MULHU, dl, MVT::i64,
+      return DAG.getNode(ISD::MULHU, dl, MVT::i32,
                          Op.getOperand(1), Op.getOperand(2));
     }
   }
@@ -591,23 +577,23 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
     SDValue ShOpLo = Op.getOperand(0);
     SDValue ShOpHi = Op.getOperand(1);
     SDValue ShAmt  = Op.getOperand(2);
-    SDValue bm = DAG.getNode(ISD::SUB, dl, MVT::i64,
-                             DAG.getConstant(64, MVT::i64), ShAmt);
-    SDValue BMCC = DAG.getSetCC(dl, MVT::i64, bm,
-                                DAG.getConstant(0, MVT::i64), ISD::SETLE);
+    SDValue bm = DAG.getNode(ISD::SUB, dl, MVT::i32,
+                             DAG.getConstant(64, MVT::i32), ShAmt);
+    SDValue BMCC = DAG.getSetCC(dl, MVT::i32, bm,
+                                DAG.getConstant(0, MVT::i32), ISD::SETLE);
     // if 64 - shAmt <= 0
-    SDValue Hi_Neg = DAG.getConstant(0, MVT::i64);
-    SDValue ShAmt_Neg = DAG.getNode(ISD::SUB, dl, MVT::i64,
-                                    DAG.getConstant(0, MVT::i64), bm);
-    SDValue Lo_Neg = DAG.getNode(ISD::SRL, dl, MVT::i64, ShOpHi, ShAmt_Neg);
+    SDValue Hi_Neg = DAG.getConstant(0, MVT::i32);
+    SDValue ShAmt_Neg = DAG.getNode(ISD::SUB, dl, MVT::i32,
+                                    DAG.getConstant(0, MVT::i32), bm);
+    SDValue Lo_Neg = DAG.getNode(ISD::SRL, dl, MVT::i32, ShOpHi, ShAmt_Neg);
     // else
-    SDValue carries = DAG.getNode(ISD::SHL, dl, MVT::i64, ShOpHi, bm);
-    SDValue Hi_Pos =  DAG.getNode(ISD::SRL, dl, MVT::i64, ShOpHi, ShAmt);
-    SDValue Lo_Pos = DAG.getNode(ISD::SRL, dl, MVT::i64, ShOpLo, ShAmt);
-    Lo_Pos = DAG.getNode(ISD::OR, dl, MVT::i64, Lo_Pos, carries);
+    SDValue carries = DAG.getNode(ISD::SHL, dl, MVT::i32, ShOpHi, bm);
+    SDValue Hi_Pos =  DAG.getNode(ISD::SRL, dl, MVT::i32, ShOpHi, ShAmt);
+    SDValue Lo_Pos = DAG.getNode(ISD::SRL, dl, MVT::i32, ShOpLo, ShAmt);
+    Lo_Pos = DAG.getNode(ISD::OR, dl, MVT::i32, Lo_Pos, carries);
     // Merge
-    SDValue Hi = DAG.getNode(ISD::SELECT, dl, MVT::i64, BMCC, Hi_Neg, Hi_Pos);
-    SDValue Lo = DAG.getNode(ISD::SELECT, dl, MVT::i64, BMCC, Lo_Neg, Lo_Pos);
+    SDValue Hi = DAG.getNode(ISD::SELECT, dl, MVT::i32, BMCC, Hi_Neg, Hi_Pos);
+    SDValue Lo = DAG.getNode(ISD::SELECT, dl, MVT::i32, BMCC, Lo_Neg, Lo_Pos);
     SDValue Ops[2] = { Lo, Hi };
     return DAG.getMergeValues(Ops, 2, dl);
   }
@@ -617,7 +603,7 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
 
 
   case ISD::SINT_TO_FP: {
-    assert(Op.getOperand(0).getValueType() == MVT::i64 &&
+    assert(Op.getOperand(0).getValueType() == MVT::i32 &&
            "Unhandled SINT_TO_FP type in custom expander!");
     SDValue LD;
     bool isDouble = Op.getValueType() == MVT::f64;
@@ -635,17 +621,17 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
 
     src = DAG.getNode(MapipISD::CVTTQ_, dl, MVT::f64, src);
 
-    return DAG.getNode(ISD::BITCAST, dl, MVT::i64, src);
+    return DAG.getNode(ISD::BITCAST, dl, MVT::i32, src);
   }
   case ISD::ConstantPool: {
     ConstantPoolSDNode *CP = cast<ConstantPoolSDNode>(Op);
     const Constant *C = CP->getConstVal();
-    SDValue CPI = DAG.getTargetConstantPool(C, MVT::i64, CP->getAlignment());
+    SDValue CPI = DAG.getTargetConstantPool(C, MVT::i32, CP->getAlignment());
     // FIXME there isn't really any debug info here
 
-    SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i64, CPI,
-                               DAG.getGLOBAL_OFFSET_TABLE(MVT::i64));
-    SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i64, CPI, Hi);
+    SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i32, CPI,
+                               DAG.getGLOBAL_OFFSET_TABLE(MVT::i32));
+    SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i32, CPI, Hi);
     return Lo;
   }
   case ISD::GlobalTLSAddress:
@@ -653,26 +639,26 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
   case ISD::GlobalAddress: {
     GlobalAddressSDNode *GSDN = cast<GlobalAddressSDNode>(Op);
     const GlobalValue *GV = GSDN->getGlobal();
-    SDValue GA = DAG.getTargetGlobalAddress(GV, dl, MVT::i64,
+    SDValue GA = DAG.getTargetGlobalAddress(GV, dl, MVT::i32,
                                             GSDN->getOffset());
     // FIXME there isn't really any debug info here
 
     //    if (!GV->hasWeakLinkage() && !GV->isDeclaration()
     //        && !GV->hasLinkOnceLinkage()) {
     if (GV->hasLocalLinkage()) {
-      SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i64, GA,
-                                DAG.getGLOBAL_OFFSET_TABLE(MVT::i64));
-      SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i64, GA, Hi);
+      SDValue Hi = DAG.getNode(MapipISD::GPRelHi,  dl, MVT::i32, GA,
+                                DAG.getGLOBAL_OFFSET_TABLE(MVT::i32));
+      SDValue Lo = DAG.getNode(MapipISD::GPRelLo, dl, MVT::i32, GA, Hi);
       return Lo;
     } else
-      return DAG.getNode(MapipISD::RelLit, dl, MVT::i64, GA,
-                         DAG.getGLOBAL_OFFSET_TABLE(MVT::i64));
+      return DAG.getNode(MapipISD::RelLit, dl, MVT::i32, GA,
+                         DAG.getGLOBAL_OFFSET_TABLE(MVT::i32));
   }
   case ISD::ExternalSymbol: {
-    return DAG.getNode(MapipISD::RelLit, dl, MVT::i64,
+    return DAG.getNode(MapipISD::RelLit, dl, MVT::i32,
                        DAG.getTargetExternalSymbol(cast<ExternalSymbolSDNode>(Op)
-                                                   ->getSymbol(), MVT::i64),
-                       DAG.getGLOBAL_OFFSET_TABLE(MVT::i64));
+                                                   ->getSymbol(), MVT::i32),
+                       DAG.getGLOBAL_OFFSET_TABLE(MVT::i32));
   }
 
   case ISD::UREM:
@@ -703,8 +689,8 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
       }
       SDValue Tmp1 = Op.getOperand(0),
         Tmp2 = Op.getOperand(1),
-        Addr = DAG.getExternalSymbol(opstr, MVT::i64);
-      return DAG.getNode(MapipISD::DivCall, dl, MVT::i64, Addr, Tmp1, Tmp2);
+        Addr = DAG.getExternalSymbol(opstr, MVT::i32);
+      return DAG.getNode(MapipISD::DivCall, dl, MVT::i32, Addr, Tmp1, Tmp2);
     }
     break;
 
@@ -714,7 +700,7 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
 
     SDValue Result;
     if (Op.getValueType() == MVT::i32)
-      Result = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i64, Chain, DataPtr,
+      Result = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i32, Chain, DataPtr,
                               MachinePointerInfo(), MVT::i32, false, false, 0);
     else
       Result = DAG.getLoad(Op.getValueType(), dl, Chain, DataPtr,
@@ -735,12 +721,12 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
     SDValue Result = DAG.getStore(Val.getValue(1), dl, Val, DestP,
                                   MachinePointerInfo(DestS),
                                   false, false, 0);
-    SDValue NP = DAG.getNode(ISD::ADD, dl, MVT::i64, SrcP,
-                               DAG.getConstant(8, MVT::i64));
-    Val = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i64, Result,
+    SDValue NP = DAG.getNode(ISD::ADD, dl, MVT::i32, SrcP,
+                               DAG.getConstant(8, MVT::i32));
+    Val = DAG.getExtLoad(ISD::SEXTLOAD, dl, MVT::i32, Result,
                          NP, MachinePointerInfo(), MVT::i32, false, false, 0);
-    SDValue NPD = DAG.getNode(ISD::ADD, dl, MVT::i64, DestP,
-                                DAG.getConstant(8, MVT::i64));
+    SDValue NPD = DAG.getNode(ISD::ADD, dl, MVT::i32, DestP,
+                                DAG.getConstant(8, MVT::i32));
     return DAG.getTruncStore(Val.getValue(1), dl, Val, NPD,
                              MachinePointerInfo(), MVT::i32,
                              false, false, 0);
@@ -754,19 +740,19 @@ SDValue MapipTargetLowering::LowerOperation(SDValue Op,
     const Value *VAListS = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
 
     // vastart stores the address of the VarArgsBase and VarArgsOffset
-    SDValue FR  = DAG.getFrameIndex(FuncInfo->getVarArgsBase(), MVT::i64);
+    SDValue FR  = DAG.getFrameIndex(FuncInfo->getVarArgsBase(), MVT::i32);
     SDValue S1  = DAG.getStore(Chain, dl, FR, VAListP,
                                MachinePointerInfo(VAListS), false, false, 0);
-    SDValue SA2 = DAG.getNode(ISD::ADD, dl, MVT::i64, VAListP,
-                                DAG.getConstant(8, MVT::i64));
+    SDValue SA2 = DAG.getNode(ISD::ADD, dl, MVT::i32, VAListP,
+                                DAG.getConstant(8, MVT::i32));
     return DAG.getTruncStore(S1, dl,
                              DAG.getConstant(FuncInfo->getVarArgsOffset(),
-                                             MVT::i64),
+                                             MVT::i32),
                              SA2, MachinePointerInfo(),
                              MVT::i32, false, false, 0);
   }
   case ISD::RETURNADDR:
-    return DAG.getNode(MapipISD::GlobalRetAddr, DebugLoc(), MVT::i64);
+    return DAG.getNode(MapipISD::GlobalRetAddr, DebugLoc(), MVT::i32);
       //FIXME: implement
   case ISD::FRAMEADDR:          break;
   }
@@ -844,8 +830,7 @@ getRegForInlineAsmConstraint(const std::string &Constraint, EVT VT) const
     case 'r':
       return std::make_pair(0U, Mapip::GPRCRegisterClass);
     case 'f':
-      return VT == MVT::f64 ? std::make_pair(0U, Mapip::F8RCRegisterClass) :
-	std::make_pair(0U, Mapip::F4RCRegisterClass);
+      return std::make_pair(0U, Mapip::F8RCRegisterClass);
     }
   }
   return TargetLowering::getRegForInlineAsmConstraint(Constraint, VT);

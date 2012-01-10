@@ -1,0 +1,6 @@
+Alpha: 64-bit integer regs, 32- and 64-bit FPRs, 8- and 16-bit immediates, CMPxx instructions, BranchXX instructions.
+MBlaze: 32-bit GPR/FPR (shadowed?), many SPRs, 16-bit immediates, Bxx instructions.
+Mips: 32-bit GPRs (shadowed by 64-bit?), similar FPRs, 16-bit immediates, proper Bxx.
+PPC: like MIPS, except Bxx requires a previous CMP.
+Sparc: 32-bit GPRs, 32-bit FPRs (shadowed by half number of 64-bit FPRs), inscrutable branching.
+SystemZ: 32- and 64-bit registers, flag-register-based branching.

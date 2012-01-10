@@ -110,7 +110,7 @@ def F31 : FPR<31, "$f31">, DwarfRegNum<[64]>;
   // $28 is undefined after any and all calls
 
 /// Register classes
-def GPRC : RegisterClass<"Mapip", [i64], 64, (add
+def GPRC : RegisterClass<"Mapip", [i32], 32, (add
      // Volatile
      R0, R1, R2, R3, R4, R5, R6, R7, R8, R16, R17, R18, R19, R20, R21, R22,
      R23, R24, R25, R28,
@@ -123,11 +123,9 @@ def GPRC : RegisterClass<"Mapip", [i64], 64, (add
 // Don't allocate 15, 30, 31
      R15, R30, R31)>; //zero
 
-def F4RC : RegisterClass<"Mapip", [f32], 64, (add F0, F1,
+def F8RC : RegisterClass<"Mapip", [f64], 64, (add F0, F1,
         F10, F11, F12, F13, F14, F15, F16, F17, F18, F19,
         F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30,
         // Saved:
         F2, F3, F4, F5, F6, F7, F8, F9,
         F31)>; //zero
-
-def F8RC : RegisterClass<"Mapip", [f64], 64, (add F4RC)>;
