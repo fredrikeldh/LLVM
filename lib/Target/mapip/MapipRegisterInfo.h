@@ -17,7 +17,8 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/ADT/BitVector.h"
 
-//#include "MapipGenRegisterInfo.h.inc"
+#define GET_REGINFO_HEADER
+#include "MapipGenRegisterInfo.inc"
 
 namespace llvm {
 class MapipTargetMachine;
@@ -25,7 +26,7 @@ class MachineFunction;
 
 struct MapipRegisterInfo : public MapipGenRegisterInfo {
   MapipRegisterInfo(MapipTargetMachine &TM,
-                  const TargetInstrInfo &TII) {}
+                  const TargetInstrInfo &TII) : MapipGenRegisterInfo(32) {}
 
   virtual const unsigned
     *getCalleeSavedRegs(const MachineFunction *MF = 0) const {
@@ -54,9 +55,9 @@ struct MapipRegisterInfo : public MapipGenRegisterInfo {
     return 0;
   }
 
-  virtual int getDwarfRegNum(unsigned RegNum, bool isEH) const {
+  /*virtual int getDwarfRegNum(unsigned RegNum, bool isEH) const {
     return MapipGenRegisterInfo::getDwarfRegNumFull(RegNum, 0);
-  }
+  }*/
 }; // struct MapipRegisterInfo
 } // namespace llvm
 

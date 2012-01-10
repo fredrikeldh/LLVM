@@ -47,16 +47,21 @@ class InstMapip<bits<7> op, dag oops, dag iops, string asmstr, list<dag> pattern
 	let Pattern = pattern;
 }
 
-/*
 class InstAluReg<bits<7> op, string instr_asm, SDNode opNode>
 : InstMapip<op, (outs GPR:$dst), (ins GPR:$a, GPR:$src),
 	!strconcat(instr_asm, " $dst, $src"),
-	[(set GPR:$dst, (opNode GPR:$a, GPR:$src))]>;
+	[(set GPR:$dst, (opNode GPR:$a, GPR:$src))]>
+{
+	let Constraints = "$a = $dst";
+}
 
 class InstAluImm<bits<7> op, string instr_asm, SDNode opNode>
 : InstMapip<op, (outs GPR:$dst), (ins GPR:$a, Imm:$imm),
 	!strconcat(instr_asm, " $dst, $imm"),
-	[(set GPR:$dst, (opNode GPR:$a, imm32:$imm))]>;
+	[(set GPR:$dst, (opNode GPR:$a, imm32:$imm))]>
+{
+	let Constraints = "$a = $dst";
+}
 
 multiclass InstAluMulti<bits<7> regOp, bits<7> immOp, string instr_asm, SDNode opNode> {
   def rr : InstAluReg<regOp, instr_asm, opNode>;
@@ -83,4 +88,3 @@ multiclass InstJC<bits<7> op, string instr_asm, PatFrag cond_op> {
   def jc16 : InstJC16<op, instr_asm, cond_op>;
   def jc24 : InstJC24<op, !strconcat("far ", instr_asm), cond_op>;
 }
-*/

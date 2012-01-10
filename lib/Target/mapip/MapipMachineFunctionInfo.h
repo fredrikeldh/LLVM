@@ -14,7 +14,9 @@
 #ifndef Mapip_MACHINE_FUNCTION_INFO_H
 #define Mapip_MACHINE_FUNCTION_INFO_H
 
+#define GET_REGINFO_ENUM
 #include "Mapip.h"
+#include "MapipRegisterInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 
 namespace llvm {

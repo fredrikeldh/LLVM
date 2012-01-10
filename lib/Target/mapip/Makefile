@@ -15,11 +15,8 @@ TARGET = Mapip
 BUILT_SOURCES = MapipGenAsmWriter.inc \
 	MapipGenDAGISel.inc \
 	MapipGenInstrInfo.inc \
-##	MapipGenInstrNames.inc \
 	MapipGenRegisterInfo.inc \
-##	MapipGenRegisterInfo.h.inc \
-	MapipGenRegisterNames.inc \
-	MapipGenSubtarget.inc
+	MapipGenSubtargetInfo.inc \
 
 DIRS = TargetInfo
 

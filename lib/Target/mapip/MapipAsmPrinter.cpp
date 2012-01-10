@@ -29,12 +29,12 @@
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Target/Mangler.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
-#include "llvm/Target/TargetRegistry.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/TargetRegistry.h"
 
 using namespace llvm;
 
@@ -76,6 +76,7 @@ private:
 static const char PARAM_PREFIX[] = "__param_";
 
 static const char *getRegisterTypeName(unsigned RegNo) {
+#if 0
 #define TEST_REGCLS(cls, clsstr)                \
   if (Mapip::cls ## RegisterClass->contains(RegNo)) return # clsstr;
   TEST_REGCLS(Preds, pred);
@@ -85,7 +86,7 @@ static const char *getRegisterTypeName(unsigned RegNo) {
   TEST_REGCLS(RRegf32, f32);
   TEST_REGCLS(RRegf64, f64);
 #undef TEST_REGCLS
-
+#endif
   llvm_unreachable("Not in any register class!");
   return NULL;
 }
@@ -168,7 +169,7 @@ void MapipAsmPrinter::EmitStartOfAsmFile(Module &M)
 {
   const MapipSubtarget& ST = TM.getSubtarget<MapipSubtarget>();
 
-  OutStreamer.EmitRawText(Twine("\t.version " + ST.getMapipVersionString()));
+  //OutStreamer.EmitRawText(Twine("\t.version " + ST.getMapipVersionString()));
   OutStreamer.EmitRawText(Twine("\t.target " + ST.getTargetString() +
                                 (ST.supportsDouble() ? ""
                                                      : ", map_f64_to_f32")));

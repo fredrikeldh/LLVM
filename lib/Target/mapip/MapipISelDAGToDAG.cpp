@@ -11,6 +11,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#define GET_INSTRINFO_ENUM
+#include "MapipGenInstrInfo.inc"
+
 #include "Mapip.h"
 #include "MapipTargetMachine.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
@@ -70,12 +73,14 @@ SDNode *MapipDAGToDAGISel::Select(SDNode *Node) {
 
 SDNode *MapipDAGToDAGISel::SelectREAD_PARAM(SDNode *Node) {
   SDValue  index = Node->getOperand(1);
+#if 0
   DebugLoc dl    = Node->getDebugLoc();
   unsigned opcode;
-
+#endif
   if (index.getOpcode() != ISD::TargetConstant)
     llvm_unreachable("READ_PARAM: index is not ISD::TargetConstant");
 
+#if 0
   if (Node->getValueType(0) == MVT::i16) {
     opcode = Mapip::LDpiU16;
   }
@@ -91,12 +96,16 @@ SDNode *MapipDAGToDAGISel::SelectREAD_PARAM(SDNode *Node) {
   else if (Node->getValueType(0) == MVT::f64) {
     opcode = Mapip::LDpiF64;
   }
-  else {
+  else
+#endif
+	{
     llvm_unreachable("Unknown parameter type for ld.param");
   }
 
+#if 0
   return MapipInstrInfo::
     GetMapipMachineNode(CurDAG, opcode, dl, Node->getValueType(0), index);
+#endif
 }
 
 // Match memory operand of the form [reg+reg]
