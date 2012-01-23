@@ -38,3 +38,26 @@ projects/*
 !projects/Makefile
 # Clang, which is tracked independently.
 tools/clang
+
+#==============================================================================#
+# Generated files and directories
+#==============================================================================#
+Debug
+Release
+config.log
+config.status
+Makefile.config
+/docs/doxygen.cfg
+.DS_Store
+*.inc
+/include/llvm/Config/*.h
+/include/llvm/Config/*.def
+/include/llvm/Intrinsics.gen
+/include/llvm/Support/DataTypes.h
+/bindings/ocaml/llvm/META.llvm
+/llvm.spec
+/tools/llvm-config/llvm-config.in
+/tools/llvm-config/LibDeps.txt
+/tools/llvm-config/LibDeps.txt.tmp
+/tools/llvm-config/FinalLibDeps.txt
+/projects/sample/Makefile.common
